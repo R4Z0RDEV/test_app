@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gallery_saver/gallery_saver.dart';
 import 'package:http/http.dart' as http;
@@ -12,9 +13,10 @@ import 'package:test_app/ui/glass_card.dart';
 import 'package:test_app/ui/primary_gradient_button.dart';
 import 'package:test_app/ui/section_header.dart';
 
-import '../app/ad_gate.dart';
+// import '../app/ad_gate.dart'; // 기존 가짜 광고 삭제
 import '../app/history.dart';
 import '../services/replicate_client.dart';
+import '../services/admob_service.dart'; // [추가] AdMob 서비스 임포트
 
 class UpscaleScreen extends StatefulWidget {
   const UpscaleScreen({super.key});
@@ -25,6 +27,10 @@ class UpscaleScreen extends StatefulWidget {
 
 class _UpscaleScreenState extends State<UpscaleScreen> {
   late final UpscaleController _controller;
+  
+  // [추가] AdMob 서비스 인스턴스 생성
+  final AdMobService _adMobService = AdMobService();
+  
   String? _friendlyError;
   bool _isSavingImage = false;
 
@@ -32,11 +38,16 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
   void initState() {
     super.initState();
     _controller = UpscaleController();
+    
+    // [추가] 화면 진입 시 광고 미리 로드
+    _adMobService.loadRewardedAd();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    // [추가] AdMob 리소스 해제
+    _adMobService.dispose();
     super.dispose();
   }
 
@@ -61,11 +72,14 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
       return;
     }
 
-    final gated = await showRewardAdGate(
-      context,
-      reason: AdRewardReason.upscaleImage,
-    );
-    if (!gated) return;
+    // [수정] 기존 가짜 광고 대신 AdMob 보상형 광고 표시
+    // final gated = await showRewardAdGate(...) -> 삭제됨
+
+    // 광고 보여주기 & 결과 대기
+    final rewardEarned = await _adMobService.showRewardedAd(context);
+
+    // 보상을 받지 못했으면(광고 닫음, 실패 등) 중단
+    if (!rewardEarned) return;
 
     try {
       await _controller.upscale();
@@ -232,9 +246,9 @@ class _UpscalePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // [수정됨] 원본 URL이 있거나(히스토리) OR 원본 Bytes가 있거나(로컬업로드) 둘 중 하나면 OK
-    final hasBoth = (controller.originalUrl != null || controller.originalBytes != null) && 
-                    controller.upscaledUrl != null;
+    final hasBoth =
+        (controller.originalUrl != null || controller.originalBytes != null) &&
+            controller.upscaledUrl != null;
 
     return GlassCard(
       child: AnimatedSwitcher(
@@ -256,12 +270,10 @@ class _UpscalePreview extends StatelessWidget {
                             Positioned.fill(
                               child: ClipRect(
                                 clipper: _SplitClipper(controller.sliderValue),
-                                child: Image.network(
-                                  controller.upscaledUrl!,
+                                child: CachedNetworkImage(
+                                  imageUrl: controller.upscaledUrl!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stack) {
-                                    return const SizedBox();
-                                  },
+                                  errorWidget: (context, url, error) => const SizedBox(),
                                 ),
                               ),
                             ),
@@ -344,14 +356,12 @@ class _UpscalePreview extends StatelessWidget {
 
     final url = controller.originalUrl;
     if (url != null) {
-      return Image.network(
-        url,
+      return CachedNetworkImage(
+        imageUrl: url,
         fit: fit,
-        errorBuilder: (context, error, stackTrace) {
-          return const Center(
-            child: Icon(Icons.error_outline, color: Colors.red),
-          );
-        },
+        errorWidget: (context, url, error) => const Center(
+          child: Icon(Icons.error_outline, color: Colors.red),
+        ),
       );
     }
     return const SizedBox();
@@ -540,9 +550,7 @@ class UpscaleController extends ChangeNotifier {
         faceEnhance: _faceEnhance,
       );
 
-      // [수정됨] 여기서 _originalUrl = null; 을 삭제했습니다. 
-      // 로컬 파일 업스케일시 _originalBytes가 유지되어야 하는데 
-      // 불필요한 초기화를 방지합니다.
+      // _originalUrl은 로컬 업로드 시 null일 수 있으므로 덮어쓰지 않음
       _upscaledUrl = upscaled;
       _sliderValue = 0.5;
 

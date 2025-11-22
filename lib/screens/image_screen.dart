@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gallery_saver/gallery_saver.dart';
 import 'package:http/http.dart' as http;
@@ -10,10 +11,11 @@ import 'package:test_app/ui/glass_card.dart';
 import 'package:test_app/ui/primary_gradient_button.dart';
 import 'package:test_app/ui/section_header.dart';
 
-import '../app/ad_gate.dart';
+// import '../app/ad_gate.dart'; // 가짜 광고 삭제
 import '../app/history.dart';
 import '../services/media_watermark_service.dart';
 import '../services/replicate_client.dart';
+import '../services/admob_service.dart'; // AdMob 서비스
 
 class ImageScreen extends StatefulWidget {
   const ImageScreen({super.key});
@@ -25,17 +27,26 @@ class ImageScreen extends StatefulWidget {
 class _ImageScreenState extends State<ImageScreen> {
   late final ImageGenerationController _controller;
   final MediaWatermarkService _media = MediaWatermarkService.instance;
+  
+  // AdMob 서비스 인스턴스
+  final AdMobService _adMobService = AdMobService();
+  
   bool _isSavingImage = false;
 
   @override
   void initState() {
     super.initState();
     _controller = ImageGenerationController();
+    
+    // 화면 진입 시 광고 미리 로드
+    _adMobService.loadRewardedAd();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    // 광고 리소스 해제
+    _adMobService.dispose();
     super.dispose();
   }
 
@@ -58,11 +69,11 @@ class _ImageScreenState extends State<ImageScreen> {
       return;
     }
 
-    final gated = await showRewardAdGate(
-      context,
-      reason: AdRewardReason.generateImage,
-    );
-    if (!gated) return;
+    // [수정] AdMob 보상형 광고 표시
+    final rewardEarned = await _adMobService.showRewardedAd(context);
+
+    // 보상을 받지 못했으면(광고 닫음, 실패 등) 중단
+    if (!rewardEarned) return;
 
     try {
       await _controller.generate();
@@ -81,7 +92,6 @@ class _ImageScreenState extends State<ImageScreen> {
   Future<void> _handleDownload() async {
     final url = _controller.imageUrl;
     final job = _controller.currentJob;
-    // 이미 생성된 워터마크 파일이 있다면 재활용
     final wmFile = _controller.watermarkedFile;
     
     if (url == null || job == null || _isSavingImage) return;
@@ -92,14 +102,12 @@ class _ImageScreenState extends State<ImageScreen> {
         File fileToSave;
         
         if (withWatermark) {
-          // 워터마크 버전 저장: 이미 만들어둔 파일이 있으면 쓰고, 없으면 새로 만듦
           if (wmFile != null && await wmFile.exists()) {
             fileToSave = wmFile;
           } else {
             fileToSave = await _media.addWatermarkToImageFromUrl(url);
           }
         } else {
-          // 워터마크 제거 버전 저장 (원본 다운로드)
           final response = await http.get(Uri.parse(url));
           if (response.statusCode >= 400) {
             throw Exception(
@@ -137,7 +145,6 @@ class _ImageScreenState extends State<ImageScreen> {
       }
     }
 
-    // 워터마크가 이미 제거된 상태라면 바로 원본 저장
     if (!job.hasWatermark) {
       await saveImage(withWatermark: false);
       return;
@@ -184,11 +191,11 @@ class _ImageScreenState extends State<ImageScreen> {
                       ? null
                       : () async {
                           Navigator.pop(context);
-                          final unlocked = await showRewardAdGate(
-                            context,
-                            reason: AdRewardReason.removeImageWatermark,
-                          );
-                          if (!unlocked) return;
+                          
+                          // [수정] 워터마크 제거 시 AdMob 광고 시청
+                          final rewardEarned = await _adMobService.showRewardedAd(context);
+                          if (!rewardEarned) return;
+                          
                           await _controller.markWatermarkCleared();
                           if (!mounted) return;
                           await saveImage(withWatermark: false);
@@ -286,10 +293,7 @@ class _ImagePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasImage = controller.imageUrl != null;
     final wmFile = controller.watermarkedFile;
-    // 워터마크 파일이 존재하고 워터마크가 필요한 상태라면 로컬 파일(워터마크 됨)을 보여줌
     final showLocalFile = wmFile != null && (controller.currentJob?.hasWatermark ?? true);
-
-    final theme = Theme.of(context);
 
     return GlassCard(
       child: AnimatedSwitcher(
@@ -301,33 +305,32 @@ class _ImagePreview extends StatelessWidget {
                   children: [
                     AspectRatio(
                       aspectRatio: controller.width / controller.height,
-                      // [수정됨] 로컬 파일(워터마크) 우선, 없으면 네트워크 이미지(원본) 표시
                       child: showLocalFile
                           ? Image.file(
                               wmFile!,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
-                                return Image.network(controller.imageUrl!, fit: BoxFit.cover);
+                                return CachedNetworkImage(
+                                  imageUrl: controller.imageUrl!,
+                                  fit: BoxFit.cover,
+                                );
                               },
                             )
-                          : Image.network(
-                              controller.imageUrl!,
+                          : CachedNetworkImage(
+                              imageUrl: controller.imageUrl!,
                               fit: BoxFit.cover,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return Center(
-                                  child: Icon(
-                                    Icons.error_outline,
-                                    color: Colors.red.withOpacity(0.8),
-                                    size: 48,
-                                  ),
-                                );
-                              },
+                              progressIndicatorBuilder:
+                                  (context, url, downloadProgress) =>
+                                      const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              errorWidget: (context, url, error) => Center(
+                                child: Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red.withOpacity(0.8),
+                                  size: 48,
+                                ),
+                              ),
                             ),
                     ),
                     Positioned(
@@ -349,7 +352,6 @@ class _ImagePreview extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // 기존 UI Overlay 워터마크는 삭제되었습니다.
                   ],
                 ),
               )
@@ -375,7 +377,7 @@ class _ImagePreview extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text(
                       'Generate your first image to see it here.',
-                      style: theme.textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -392,31 +394,11 @@ class _ImageForm extends StatelessWidget {
   final ImageGenerationController controller;
 
   static const sizeOptions = [
-    64,
-    128,
-    192,
-    256,
-    320,
-    384,
-    448,
-    512,
-    576,
-    640,
-    704,
-    768,
-    832,
-    896,
-    960,
-    1024,
+    64, 128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832, 896, 960, 1024,
   ];
 
   static const schedulerOptions = [
-    'DDIM',
-    'K_EULER',
-    'DPMSolverMultistep',
-    'K_EULER_ANCESTRAL',
-    'PNDM',
-    'KLMS',
+    'DDIM', 'K_EULER', 'DPMSolverMultistep', 'K_EULER_ANCESTRAL', 'PNDM', 'KLMS',
   ];
 
   @override
@@ -425,13 +407,7 @@ class _ImageForm extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Prompt',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          const Text('Prompt', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           TextField(
             controller: controller.promptController,
@@ -447,13 +423,7 @@ class _ImageForm extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Negative prompt (optional)',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          const Text('Negative prompt (optional)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           TextField(
             controller: controller.negativePromptController,
@@ -476,17 +446,8 @@ class _ImageForm extends StatelessWidget {
                   value: controller.width,
                   decoration: _dropdownDecoration('Width'),
                   dropdownColor: const Color(0xFF111322),
-                  items: sizeOptions
-                      .map(
-                        (value) => DropdownMenuItem<int>(
-                          value: value,
-                          child: Text('$value'),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) controller.setWidth(value);
-                  },
+                  items: sizeOptions.map((v) => DropdownMenuItem(value: v, child: Text('$v'))).toList(),
+                  onChanged: (v) { if (v != null) controller.setWidth(v); },
                 ),
               ),
               const SizedBox(width: 12),
@@ -495,17 +456,8 @@ class _ImageForm extends StatelessWidget {
                   value: controller.height,
                   decoration: _dropdownDecoration('Height'),
                   dropdownColor: const Color(0xFF111322),
-                  items: sizeOptions
-                      .map(
-                        (value) => DropdownMenuItem<int>(
-                          value: value,
-                          child: Text('$value'),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) controller.setHeight(value);
-                  },
+                  items: sizeOptions.map((v) => DropdownMenuItem(value: v, child: Text('$v'))).toList(),
+                  onChanged: (v) { if (v != null) controller.setHeight(v); },
                 ),
               ),
             ],
@@ -515,44 +467,23 @@ class _ImageForm extends StatelessWidget {
             value: controller.scheduler,
             decoration: _dropdownDecoration('Scheduler'),
             dropdownColor: const Color(0xFF111322),
-            items: schedulerOptions
-                .map(
-                  (value) => DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  ),
-                )
-                .toList(),
+            items: schedulerOptions.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
             onChanged: controller.setScheduler,
           ),
           const SizedBox(height: 16),
-          Text(
-            'Guidance scale: ${controller.guidanceScale.toStringAsFixed(1)}',
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Text('Guidance scale: ${controller.guidanceScale.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.w700)),
           Slider(
             value: controller.guidanceScale,
             onChanged: controller.setGuidanceScale,
-            min: 1,
-            max: 20,
-            divisions: 38,
+            min: 1, max: 20, divisions: 38,
             activeColor: const Color(0xFF4ADE80),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Inference steps: ${controller.inferenceSteps}',
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Text('Inference steps: ${controller.inferenceSteps}', style: const TextStyle(fontWeight: FontWeight.w700)),
           Slider(
             value: controller.inferenceSteps.toDouble(),
-            onChanged: (value) => controller.setInferenceSteps(value.toInt()),
-            min: 1,
-            max: 500,
-            divisions: 499,
+            onChanged: (v) => controller.setInferenceSteps(v.toInt()),
+            min: 1, max: 500, divisions: 499,
             activeColor: const Color(0xFF4ADE80),
           ),
         ],
@@ -565,10 +496,7 @@ class _ImageForm extends StatelessWidget {
       labelText: label,
       filled: true,
       fillColor: Colors.white.withOpacity(0.03),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
     );
   }
@@ -582,16 +510,13 @@ class ImageGenerationController extends ChangeNotifier {
   final ReplicateImageClient _client = const ReplicateImageClient();
   final GenerationHistory _history = GenerationHistory.instance;
   final JobSelection _selection = JobSelection.instance;
-  // [추가됨] 워터마크 서비스 인스턴스
   final MediaWatermarkService _media = MediaWatermarkService.instance;
 
   final TextEditingController promptController = TextEditingController();
-  final TextEditingController negativePromptController =
-      TextEditingController();
+  final TextEditingController negativePromptController = TextEditingController();
 
   bool _disposed = false;
   String? _imageUrl;
-  // [추가됨] 워터마크가 입혀진 로컬 파일 저장 변수
   File? _watermarkedFile;
 
   GenerationJob? _currentJob;
@@ -613,19 +538,15 @@ class ImageGenerationController extends ChangeNotifier {
   int get inferenceSteps => _numSteps;
 
   void _safeNotifyListeners() {
-    if (!_disposed) {
-      notifyListeners();
-    }
+    if (!_disposed) notifyListeners();
   }
 
   Future<void> generate() async {
     final prompt = promptController.text.trim();
-    if (prompt.isEmpty) {
-      throw StateError('Prompt is empty');
-    }
+    if (prompt.isEmpty) throw StateError('Prompt is empty');
 
     _isGenerating = true;
-    _watermarkedFile = null; // 기존 파일 초기화
+    _watermarkedFile = null;
     _safeNotifyListeners();
 
     try {
@@ -636,14 +557,11 @@ class ImageGenerationController extends ChangeNotifier {
         scheduler: _scheduler,
         guidanceScale: _guidanceScale,
         numInferenceSteps: _numSteps,
-        negativePrompt: negativePromptController.text.trim().isEmpty
-            ? null
-            : negativePromptController.text.trim(),
+        negativePrompt: negativePromptController.text.trim().isEmpty ? null : negativePromptController.text.trim(),
       );
 
       _imageUrl = imageUrl;
 
-      // [수정됨] 생성 직후 워터마크가 입혀진 로컬 파일을 미리 생성합니다.
       try {
         _watermarkedFile = await _media.addWatermarkToImageFromUrl(imageUrl);
       } catch (e) {
@@ -682,44 +600,17 @@ class ImageGenerationController extends ChangeNotifier {
   Future<void> markWatermarkCleared() async {
     final job = _currentJob;
     if (job == null || !job.hasWatermark) return;
-    final updated = job.copyWith(
-      hasWatermark: false,
-      watermarkRemoved: true,
-    );
+    final updated = job.copyWith(hasWatermark: false, watermarkRemoved: true);
     _currentJob = updated;
     _history.updateJob(updated);
     _safeNotifyListeners();
   }
 
-  void setWidth(int value) {
-    if (_width == value) return;
-    _width = value;
-    _safeNotifyListeners();
-  }
-
-  void setHeight(int value) {
-    if (_height == value) return;
-    _height = value;
-    _safeNotifyListeners();
-  }
-
-  void setScheduler(String? value) {
-    if (value == null || _scheduler == value) return;
-    _scheduler = value;
-    _safeNotifyListeners();
-  }
-
-  void setGuidanceScale(double value) {
-    if (_guidanceScale == value) return;
-    _guidanceScale = value;
-    _safeNotifyListeners();
-  }
-
-  void setInferenceSteps(int value) {
-    if (_numSteps == value) return;
-    _numSteps = value;
-    _safeNotifyListeners();
-  }
+  void setWidth(int value) { if (_width != value) { _width = value; _safeNotifyListeners(); } }
+  void setHeight(int value) { if (_height != value) { _height = value; _safeNotifyListeners(); } }
+  void setScheduler(String? value) { if (value != null && _scheduler != value) { _scheduler = value; _safeNotifyListeners(); } }
+  void setGuidanceScale(double value) { if (_guidanceScale != value) { _guidanceScale = value; _safeNotifyListeners(); } }
+  void setInferenceSteps(int value) { if (_numSteps != value) { _numSteps = value; _safeNotifyListeners(); } }
 
   void _handleSelection() {
     final job = _selection.selected;
@@ -727,24 +618,14 @@ class ImageGenerationController extends ChangeNotifier {
 
     _currentJob = job;
     _imageUrl = job.previewUrl;
-    _watermarkedFile = null; // 히스토리에서 불러올 땐 일단 리셋
-
-    // [선택 사항] 히스토리 선택 시에도 워터마크 바로 보이게 하려면 아래 주석 해제
-    // if (job.hasWatermark) {
-    //   _media.addWatermarkToImageFromUrl(_imageUrl!).then((f) {
-    //     _watermarkedFile = f;
-    //     _safeNotifyListeners();
-    //   });
-    // }
+    _watermarkedFile = null;
 
     promptController.text = (job.parameters['prompt'] as String?) ?? '';
-    negativePromptController.text =
-        (job.parameters['negativePrompt'] as String?) ?? '';
+    negativePromptController.text = (job.parameters['negativePrompt'] as String?) ?? '';
     _width = (job.parameters['width'] as int?) ?? 768;
     _height = (job.parameters['height'] as int?) ?? 768;
     _scheduler = (job.parameters['scheduler'] as String?) ?? 'K_EULER';
-    _guidanceScale =
-        (job.parameters['guidanceScale'] as num?)?.toDouble() ?? 7.5;
+    _guidanceScale = (job.parameters['guidanceScale'] as num?)?.toDouble() ?? 7.5;
     _numSteps = (job.parameters['numSteps'] as int?) ?? 50;
 
     _safeNotifyListeners();

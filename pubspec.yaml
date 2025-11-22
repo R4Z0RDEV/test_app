@@ -44,10 +44,13 @@ dependencies:
   ffmpeg_kit_flutter_new: ^1.6.1 
   video_player: ^2.9.1
   flutter_launcher_icons: "^0.13.1" # 이 줄이 꼭 있어야 합니다!
+  shared_preferences: ^2.2.2 # <-- 이 줄을 추가하세요 (버전은 최신 버전 확인 권장)
+  google_mobile_ads: ^5.0.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  cached_network_image: ^3.3.1
 
 flutter_launcher_icons:
   android: "ic_launcher"

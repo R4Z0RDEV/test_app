@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:test_app/app/app_tab.dart';
 import 'package:test_app/app/tab_controller.dart';
@@ -255,11 +256,17 @@ class _JobTile extends StatelessWidget {
           Container(
               width: 44,
               height: 44,
-            decoration: BoxDecoration(
+              decoration: BoxDecoration(
                 color: _accent.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14),
-            ),
-              child: Icon(_icon, color: _accent),
+                image: job.previewUrl != null
+                    ? DecorationImage(
+                        image: CachedNetworkImageProvider(job.previewUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: job.previewUrl != null ? null : Icon(_icon, color: _accent),
           ),
             const SizedBox(width: 12),
           Expanded(
