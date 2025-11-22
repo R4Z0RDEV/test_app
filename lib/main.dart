@@ -23,7 +23,12 @@ Future<void> main() async {
   await _loadEnv();
 
   // 3. AdMob 초기화
-  MobileAds.instance.initialize();
+  await MobileAds.instance.initialize();
+  
+  // [추가] 에뮬레이터 테스트 기기 설정 (No fill 방지)
+  await MobileAds.instance.updateRequestConfiguration(
+    RequestConfiguration(testDeviceIds: ['33BE2250B43518CCDA7DE426D04EE231', 'EMULATOR']), // 에뮬레이터 ID 추가
+  );
 
   // [추가] 4. 첫 실행 여부 확인
   final prefs = await SharedPreferences.getInstance();

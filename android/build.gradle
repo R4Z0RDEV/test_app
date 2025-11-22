@@ -1,0 +1,68 @@
+// android/build.gradle
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+
+        maven {
+            url "$rootDir/app/libs"
+        }
+        maven { url 'https://jitpack.io' }
+        maven { url 'https://storage.googleapis.com/download.flutter.io' }
+        maven { url 'https://jcenter.bintray.com/' }
+        
+    }
+
+    // [추가] 모든 프로젝트(플러그인 포함)에서 의존성 대체
+    configurations.all {
+        resolutionStrategy {
+            dependencySubstitution {
+                substitute module("com.arthenica:ffmpeg-kit-https:6.0-2.LTS") using module("com.arthenica:ffmpeg-kit-full-gpl:6.0-2")
+            }
+        }
+    }
+}
+
+rootProject.buildDir = '../build'
+
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+// ▼▼▼ [유지] 구형 라이브러리(Namespace, 25.0.1) 에러 방지 코드 ▼▼▼
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                // Namespace 에러 해결
+                if (namespace == null) {
+                    namespace project.group
+                }
+                // 25.0.1 에러 해결
+                buildToolsVersion = "36.0.0"
+                compileSdkVersion 36
+
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+    }
+
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            jvmTarget = "17"
+        }
+    }
+}
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+subprojects {
+    project.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.layout.buildDirectory
+}

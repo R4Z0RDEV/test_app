@@ -35,8 +35,10 @@ class AdMobService {
           _rewardedAd = null;
           _numRewardedLoadAttempts += 1;
           if (_numRewardedLoadAttempts < maxFailedLoadAttempts) {
-            // 로드 실패 시 재시도
-            loadRewardedAd();
+            // 로드 실패 시 약간의 딜레이 후 재시도
+            Future.delayed(const Duration(seconds: 2), () {
+              loadRewardedAd();
+            });
           }
         },
       ),

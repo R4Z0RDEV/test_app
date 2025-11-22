@@ -36,12 +36,15 @@ dependencies:
   # flutter pub get
   # cd ios && pod repo update && pod install && cd ..
   flutter_dotenv: ^5.1.0
-  gallery_saver: ^2.3.2
+  gal: ^2.3.0
   http: ^0.13.6
   image_picker: ^1.1.2
   image: ^4.1.7
   path_provider: ^2.1.5
-  ffmpeg_kit_flutter_new: ^1.6.1 
+  ffmpeg_kit_flutter:  # <--- Use the generic name
+    git:
+      url: https://github.com/Carapacik/ffmpeg-kit
+      path: flutter/flutter
   video_player: ^2.9.1
   flutter_launcher_icons: "^0.13.1" # 이 줄이 꼭 있어야 합니다!
   shared_preferences: ^2.2.2 # <-- 이 줄을 추가하세요 (버전은 최신 버전 확인 권장)

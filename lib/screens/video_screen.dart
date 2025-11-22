@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:gallery_saver/gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'package:test_app/config/secrets.dart';
 import 'package:test_app/theme/app_theme.dart';
 import 'package:test_app/ui/glass_card.dart';
@@ -175,16 +175,13 @@ class _VideoScreenState extends State<VideoScreen> {
     if (_isSavingVideo) return;
     setState(() => _isSavingVideo = true);
     try {
-      final success =
-          await GallerySaver.saveVideo(url, albumName: 'Free AI Creation');
+      // [수정됨] Gal 패키지 사용
+      await Gal.putVideo(url, album: 'Free AI Creation');
+      
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success == true
-                ? '사진 앱에 저장했어요.'
-                : '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
-          ),
+        const SnackBar(
+          content: Text('사진 앱에 저장했어요.'),
         ),
       );
     } catch (e) {

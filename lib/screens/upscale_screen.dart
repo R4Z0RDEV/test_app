@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:gallery_saver/gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -109,18 +109,13 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
           '${dir.path}/upscaled_${DateTime.now().millisecondsSinceEpoch}.png');
       await file.writeAsBytes(response.bodyBytes, flush: true);
 
-      final ok = await GallerySaver.saveImage(
-        file.path,
-        albumName: 'Free AI Creation',
-      );
+      // [수정됨] Gal 패키지 사용
+      await Gal.putImage(file.path, album: 'Free AI Creation');
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            ok == true
-                ? '업스케일 이미지를 사진 앱에 저장했습니다.'
-                : '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
-          ),
+        const SnackBar(
+          content: Text('업스케일 이미지를 사진 앱에 저장했습니다.'),
         ),
       );
     } catch (e) {
