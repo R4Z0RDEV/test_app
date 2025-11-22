@@ -19,18 +19,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   // 웰컴 페이지 데이터
   final List<Map<String, dynamic>> _pages = [
     {
-      'title': 'AI 비디오 생성',
-      'description': '텍스트만으로 놀라운 영상을 만들어보세요. 여러 클립을 이어 붙여 하나의 스토리로 만들 수 있습니다.',
+      'title': 'AI Video Creation',
+      'description': 'Create amazing videos from text. Stitch multiple clips together to tell a story.',
       'icon': Icons.play_circle_fill_rounded,
     },
     {
-      'title': '상상을 현실 이미지로',
-      'description': 'Stable Diffusion으로 고품질 이미지를 생성하세요. 당신의 아이디어를 시각화해 드립니다.',
+      'title': 'Turn Imagination into Images',
+      'description': 'Generate high-quality images with Stable Diffusion. Visualize your ideas instantly.',
       'icon': Icons.brush_rounded,
     },
     {
-      'title': '더 선명하게, 업스케일',
-      'description': '흐릿한 사진을 깨끗하게, 워터마크도 광고 시청 후 무료로 제거할 수 있습니다.',
+      'title': 'Upscale for Clarity',
+      'description': 'Sharpen blurry photos and remove watermarks for free after watching an ad.',
       'icon': Icons.auto_awesome_rounded,
     },
   ];

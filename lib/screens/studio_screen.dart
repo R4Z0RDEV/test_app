@@ -39,7 +39,7 @@ class StudioScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '최근에 생성된 비디오, 이미지, 업스케일 작업을 한 곳에서 관리하세요.',
+                                'Manage your recent video, image, and upscale creations in one place.',
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],
@@ -65,7 +65,7 @@ class StudioScreen extends StatelessWidget {
                               ? Padding(
                                   padding: const EdgeInsets.all(24.0),
                                   child: Text(
-                                    '아직 생성한 작업이 없습니다.\nVideo, Image, Upscale 탭에서 새로운 작품을 만들어보세요.',
+                                    'No creations yet.\nCreate something new in the Video, Image, or Upscale tabs.',
                                     textAlign: TextAlign.center,
                                     style: Theme.of(context)
                                         .textTheme
@@ -323,9 +323,9 @@ class _JobTile extends StatelessWidget {
 
   String _timeAgo(DateTime dateTime) {
     final diff = DateTime.now().difference(dateTime);
-    if (diff.inMinutes < 1) return '방금 전';
-    if (diff.inHours < 1) return '${diff.inMinutes}분 전';
-    if (diff.inDays < 1) return '${diff.inHours}시간 전';
-    return '${diff.inDays}일 전';
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 }

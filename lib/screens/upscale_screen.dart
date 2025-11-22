@@ -57,7 +57,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Replicate API 키가 설정되지 않았습니다. .env 파일에 REPLICATE_API_TOKEN 을 추가해 주세요.',
+            'Replicate API key is missing. Please add REPLICATE_API_TOKEN to your .env file.',
           ),
         ),
       );
@@ -66,7 +66,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
     if (!_controller.hasLocalImage) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('업스케일할 이미지를 먼저 업로드해 주세요.'),
+          content: Text('Please upload an image to upscale first.'),
         ),
       );
       return;
@@ -102,7 +102,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode >= 400) {
-        throw Exception('업스케일 이미지를 다운로드하지 못했습니다. (${response.statusCode})');
+        throw Exception('Failed to download upscaled image. (${response.statusCode})');
       }
       final dir = await getTemporaryDirectory();
       final file = File(
@@ -115,13 +115,13 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('업스케일 이미지를 사진 앱에 저장했습니다.'),
+          content: Text('Saved upscaled image to Photos.'),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('이미지 저장 실패: $e')),
+        SnackBar(content: Text('Save failed: $e')),
       );
     } finally {
       if (mounted) {
@@ -132,16 +132,16 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
 
   String _mapError(String raw) {
     if (raw.contains('Missing content')) {
-      return '이미지를 업로드하지 못했어요. 잠시 후 다시 시도하거나 다른 파일을 선택해 주세요.';
+      return 'Failed to upload image. Please try again or choose another file.';
     }
     if (raw.contains('No upscaled image URL')) {
-      return '업스케일 결과를 받지 못했습니다. 이미지 해상도를 조금 낮춰 다시 시도해 주세요.';
+      return 'No upscale result received. Please try reducing the image resolution.';
     }
     if (raw.toLowerCase().contains('too large') ||
         raw.toLowerCase().contains('memory')) {
-      return '이미지 해상도가 너무 커서 GPU 메모리 한도를 초과했습니다. 사진을 조금 줄인 뒤 다시 시도해 주세요.';
+      return 'Image resolution is too high (GPU OOM). Please resize the image and try again.';
     }
-    return '업스케일 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    return 'An error occurred during upscale. Please try again later.';
   }
 
   @override

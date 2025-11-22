@@ -50,7 +50,7 @@ class AdMobService {
     if (_rewardedAd == null) {
       print('Warning: Ad not ready yet.');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('광고를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')),
+        const SnackBar(content: Text('Loading ad. Please try again in a moment.')),
       );
       // 광고가 없으면 다시 로드 시도
       loadRewardedAd();

@@ -52,7 +52,7 @@ class _VideoScreenState extends State<VideoScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Replicate API 키가 설정되지 않았습니다. .env 파일에 REPLICATE_API_TOKEN 을 추가해 주세요.',
+            'Replicate API key is missing. Please add REPLICATE_API_TOKEN to your .env file.',
           ),
         ),
       );
@@ -181,13 +181,13 @@ class _VideoScreenState extends State<VideoScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('사진 앱에 저장했어요.'),
+          content: Text('Saved to Photos.'),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('저장 실패: $e')),
+        SnackBar(content: Text('Save failed: $e')),
       );
     } finally {
       if (mounted) {
@@ -773,7 +773,7 @@ class _VideoPreviewCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '프롬프트를 입력하고 Generate Flow를 눌러 영상을 만들어 보세요.',
+                      'Enter a prompt and press Generate Flow to create a video.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium,
                     ),

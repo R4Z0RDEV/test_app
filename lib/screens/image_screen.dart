@@ -56,7 +56,7 @@ class _ImageScreenState extends State<ImageScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Replicate API 키가 설정되지 않았습니다. .env 파일에 REPLICATE_API_TOKEN 을 추가해 주세요.',
+            'Replicate API key is missing. Please add REPLICATE_API_TOKEN to your .env file.',
           ),
         ),
       );
@@ -111,7 +111,7 @@ class _ImageScreenState extends State<ImageScreen> {
           final response = await http.get(Uri.parse(url));
           if (response.statusCode >= 400) {
             throw Exception(
-                '이미지를 다운로드하지 못했습니다. (${response.statusCode})');
+                'Failed to download image. (${response.statusCode})');
           }
           final dir = await getTemporaryDirectory();
           fileToSave = File(
@@ -125,13 +125,13 @@ class _ImageScreenState extends State<ImageScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('사진 앱에 저장했습니다.'),
+            content: Text('Saved to Photos.'),
           ),
         );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('이미지 저장 실패: $e')),
+          SnackBar(content: Text('Save failed: $e')),
         );
       } finally {
         if (mounted) {
@@ -247,7 +247,7 @@ class _ImageScreenState extends State<ImageScreen> {
                         const SizedBox(height: 16),
                         GlassCard(
                           child: Text(
-                            'Free to use, ad-supported. 워터마크 제거 및 고해상도 다운로드를 위해서는 보상형 광고를 시청해야 합니다.',
+                            'Free to use, ad-supported. Watch a rewarded ad to remove watermark and download in high resolution.',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
