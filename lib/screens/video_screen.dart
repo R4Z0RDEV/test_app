@@ -81,7 +81,10 @@ class _VideoScreenState extends State<VideoScreen> {
     final watermarkedPath = _controller.currentVideoUrl;
     final originalUrl = _controller.originalVideoUrl ?? watermarkedPath;
     final job = _controller.currentJob;
-    if (watermarkedPath == null || originalUrl == null || job == null || _isSavingVideo) {
+    if (watermarkedPath == null ||
+        originalUrl == null ||
+        job == null ||
+        _isSavingVideo) {
       return;
     }
 
@@ -188,94 +191,8 @@ class _VideoScreenState extends State<VideoScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SafeArea(
-            top: true,
-            bottom: false,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                  child: _VideoPreviewCard(
-                    controller: _controller,
-                    onDownload: _handleDownload,
-                    isSaving: _isSavingVideo,
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: ListView(
-                      physics: const BouncingScrollPhysics(),
-                      children: [
-                        SectionHeader(
-                          title: 'Clips',
-                          trailing: Text(
-                            '${_controller.clips.length} total',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(color: Colors.white54),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ..._controller.clips.asMap().entries.map(
-                              (entry) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: _ClipSummaryTile(
-                                  index: entry.key,
-                                  clip: entry.value,
-                                  onTap: () => _openClipEditor(
-                                    context,
-                                    entry.key,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        TextButton.icon(
-                          onPressed: _controller.addClip,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
-                              side: BorderSide(
-                                color: Colors.white.withOpacity(0.2),
-                              ),
-                            ),
-                          ),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add clip'),
-                        ),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  top: false,
-                  minimum: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: PrimaryGradientButton(
-                    label: 'Generate Flow',
-                    onPressed: _controller.isGenerating ? null : _handleGenerate,
-                    isLoading: _controller.isGenerating,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-  Future<void> _openClipEditor(BuildContext context, int index) async {
+  /// 클립 편집 BottomSheet 열기
+  Future<void> _openClipEditor(int index) async {
     final clip = _controller.clips[index];
     final promptController = TextEditingController(text: clip.prompt);
     final imageController = TextEditingController(text: clip.image ?? '');
@@ -341,16 +258,18 @@ class _VideoScreenState extends State<VideoScreen> {
                         ),
                         Text(
                           'Clip ${index + 1}',
-                          style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                                fontSize: 22,
-                              ),
+                          style:
+                              Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                                    fontSize: 22,
+                                  ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Edit prompt and parameters for this segment.',
-                          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white54,
-                              ),
+                          style:
+                              Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white54,
+                                  ),
                         ),
                         const SizedBox(height: 20),
                         TextField(
@@ -425,7 +344,8 @@ class _VideoScreenState extends State<VideoScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                     borderSide: BorderSide.none,
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
                                     horizontal: 12,
                                     vertical: 4,
                                   ),
@@ -457,7 +377,8 @@ class _VideoScreenState extends State<VideoScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                     borderSide: BorderSide.none,
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
                                     horizontal: 12,
                                     vertical: 4,
                                   ),
@@ -492,7 +413,7 @@ class _VideoScreenState extends State<VideoScreen> {
                           subtitle: Text(
                             'Use reference frame and keep camera static.',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white70,
                             ),
                           ),
                           activeColor: const Color(0xFF9F7CFF),
@@ -515,9 +436,10 @@ class _VideoScreenState extends State<VideoScreen> {
                         const SizedBox(height: 8),
                         Text(
                           'FPS: 24 (fixed) • Resolution: 480p',
-                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                                color: Colors.white54,
-                              ),
+                          style:
+                              Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                    color: Colors.white54,
+                                  ),
                         ),
                         const SizedBox(height: 20),
                         Row(
@@ -536,9 +458,11 @@ class _VideoScreenState extends State<VideoScreen> {
                             const Spacer(),
                             ElevatedButton(
                               onPressed: () {
-                                final seedText = seedController.text.trim();
-                                final seed =
-                                    seedText.isEmpty ? null : int.tryParse(seedText);
+                                final seedText =
+                                    seedController.text.trim();
+                                final seed = seedText.isEmpty
+                                    ? null
+                                    : int.tryParse(seedText);
 
                                 final refText =
                                     referenceController.text.trim();
@@ -557,17 +481,20 @@ class _VideoScreenState extends State<VideoScreen> {
                                   aspectRatio: aspectRatio,
                                   cameraFixed: cameraFixed,
                                   seed: seed,
-                                  image: _normalizeUrl(imageController.text),
-                                  lastFrameImage:
-                                      _normalizeUrl(lastFrameController.text),
+                                  image: _normalizeUrl(
+                                      imageController.text),
+                                  lastFrameImage: _normalizeUrl(
+                                      lastFrameController.text),
                                   referenceImages: refs,
                                 );
                                 Navigator.of(ctx).pop();
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF9F7CFF),
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
                                 ),
@@ -606,6 +533,95 @@ class _VideoScreenState extends State<VideoScreen> {
     if (trimmed.isEmpty) return null;
     return trimmed;
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            top: true,
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                  child: _VideoPreviewCard(
+                    controller: _controller,
+                    onDownload: _handleDownload,
+                    isSaving: _isSavingVideo,
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ListView(
+                      physics: const BouncingScrollPhysics(),
+                      children: [
+                        SectionHeader(
+                          title: 'Clips',
+                          trailing: Text(
+                            '${_controller.clips.length} total',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: Colors.white54),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ..._controller.clips.asMap().entries.map(
+                              (entry) => Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: 8),
+                                child: _ClipSummaryTile(
+                                  index: entry.key,
+                                  clip: entry.value,
+                                  onTap: () =>
+                                      _openClipEditor(entry.key),
+                                ),
+                              ),
+                            ),
+                        TextButton.icon(
+                          onPressed: _controller.addClip,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              side: BorderSide(
+                                color: Colors.white.withOpacity(0.2),
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add clip'),
+                        ),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  minimum:
+                      const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: PrimaryGradientButton(
+                    label: 'Generate Flow',
+                    onPressed: _controller.isGenerating
+                        ? null
+                        : _handleGenerate,
+                    isLoading: _controller.isGenerating,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _VideoPreviewCard extends StatelessWidget {
   const _VideoPreviewCard({
@@ -651,14 +667,17 @@ class _VideoPreviewCard extends StatelessWidget {
                             const Center(
                               child: CircularProgressIndicator(),
                             ),
-                          if (controller.currentJob?.hasWatermark == true)
+                          if (controller.currentJob?.hasWatermark ==
+                              true)
                             Positioned(
                               right: 12,
                               bottom: 12,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.55),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: Colors.black
+                                      .withOpacity(0.55),
+                                  borderRadius:
+                                      BorderRadius.circular(10),
                                 ),
                                 child: const Padding(
                                   padding: EdgeInsets.symmetric(
@@ -685,10 +704,13 @@ class _VideoPreviewCard extends StatelessWidget {
                                   color: Colors.white,
                                   icon: Icon(
                                     controller.isPlaying
-                                        ? Icons.pause_circle_filled_rounded
-                                        : Icons.play_circle_filled_rounded,
+                                        ? Icons
+                                            .pause_circle_filled_rounded
+                                        : Icons
+                                            .play_circle_filled_rounded,
                                   ),
-                                  onPressed: controller.togglePlayback,
+                                  onPressed:
+                                      controller.togglePlayback,
                                 ),
                               ),
                             ),
@@ -717,7 +739,8 @@ class _VideoPreviewCard extends StatelessWidget {
                         )
                       else
                         IconButton(
-                          icon: const Icon(Icons.download_rounded),
+                          icon: const Icon(
+                              Icons.download_rounded),
                           color: Colors.white,
                           onPressed: onDownload,
                         ),
@@ -728,7 +751,8 @@ class _VideoPreviewCard extends StatelessWidget {
             : SizedBox(
                 height: 220,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
                   children: [
                     Container(
                       width: 70,
@@ -737,8 +761,11 @@ class _VideoPreviewCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         gradient: AppGradients.primary,
                       ),
-                      child: const Icon(Icons.play_arrow_rounded,
-                          color: Colors.white, size: 40),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 40,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -773,7 +800,8 @@ class _ClipSummaryTile extends StatelessWidget {
         prompt.isEmpty ? 'Tap to edit clip' : prompt.split('\n').first;
 
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         title: Text(
@@ -787,7 +815,10 @@ class _ClipSummaryTile extends StatelessWidget {
           subtitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(
                 color: Colors.white70,
               ),
         ),
@@ -801,235 +832,21 @@ class _ClipSummaryTile extends StatelessWidget {
   }
 }
 
-class _ClipEditor extends StatelessWidget {
-  const _ClipEditor({
-    required this.index,
-    required this.clip,
-    required this.controller,
-  });
-
-  final int index;
-  final _VideoClip clip;
-  final VideoFlowController controller;
-
-  static const durations = ['5s', '10s', '15s'];
-  static const resolutions = ['480p', '720p', '1080p'];
-  static const ratios = ['16:9', '9:16', '1:1'];
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Clip ${index + 1}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              if (controller.clips.length > 1)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  color: Colors.white.withOpacity(0.6),
-                  onPressed: () => controller.removeClip(index),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            key: ValueKey('${clip.id}_${clip.revision}'),
-            initialValue: clip.prompt,
-            maxLines: 3,
-            onChanged: (value) => controller.updateClip(index, prompt: value),
-            decoration: InputDecoration(
-              hintText: 'Describe this clip...',
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.03),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _ReactiveDropdown(
-                  label: 'Duration',
-                  value: '${clip.duration}s',
-                  items: durations,
-                  onChanged: (value) {
-                    controller.updateClip(
-                      index,
-                      duration: int.parse(value!.replaceAll('s', '')),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ReactiveDropdown(
-                  label: 'Resolution',
-                  value: clip.resolution,
-                  items: resolutions,
-                  onChanged: (value) {
-                    controller.updateClip(index, resolution: value);
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _ReactiveDropdown(
-            label: 'Aspect ratio',
-            value: clip.aspectRatio,
-            items: ratios,
-            onChanged: (value) {
-              controller.updateClip(index, aspectRatio: value);
-            },
-          ),
-          const SizedBox(height: 6),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            value: clip.cameraFixed,
-            onChanged: (value) {
-              controller.updateClip(index, cameraFixed: value);
-            },
-            title: const Text(
-              'Lock camera movement',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              'Use reference frame and keep camera static.',
-              style: TextStyle(color: Colors.white.withOpacity(0.6)),
-            ),
-            activeColor: const Color(0xFF9F7CFF),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReactiveDropdown extends StatelessWidget {
-  const _ReactiveDropdown({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String value;
-  final List<String> items;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.03),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      ),
-      dropdownColor: const Color(0xFF111322),
-      items: items
-          .map(
-            (item) => DropdownMenuItem<String>(
-              value: item,
-              child: Text(item),
-            ),
-          )
-          .toList(),
-      onChanged: onChanged,
-    );
-  }
-}
-
-class _BottomCTA extends StatelessWidget {
-  const _BottomCTA({
-    required this.isBusy,
-    required this.label,
-    required this.accent,
-    required this.onPressed,
-  });
-
-  final bool isBusy;
-  final String label;
-  final Color accent;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0B0F1F),
-        border: Border(
-          top: BorderSide(color: Color(0x22000000)),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: isBusy ? null : onPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accent,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-            ),
-            child: isBusy
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class VideoFlowController extends ChangeNotifier {
   VideoFlowController() {
     _selection.addListener(_handleSelection);
   }
 
   final ReplicateVideoClient _client = const ReplicateVideoClient();
-   final MediaWatermarkService _media = MediaWatermarkService.instance;
-  final GenerationHistory _history = GenerationHistory.instance;
+  final MediaWatermarkService _media =
+      MediaWatermarkService.instance;
+  final GenerationHistory _history =
+      GenerationHistory.instance;
   final JobSelection _selection = JobSelection.instance;
 
   final List<_VideoClip> _clips = [_VideoClip()];
 
+  bool _disposed = false;
   bool _isGenerating = false;
   bool _isVideoReady = false;
   bool _isPlaying = false;
@@ -1050,21 +867,31 @@ class VideoFlowController extends ChangeNotifier {
   bool get hasPrompts =>
       _clips.any((clip) => clip.prompt.trim().isNotEmpty);
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
   Future<void> generate() async {
-    final activeClips =
-        _clips.where((clip) => clip.prompt.trim().isNotEmpty).toList();
+    final activeClips = _clips
+        .where((clip) => clip.prompt.trim().isNotEmpty)
+        .toList();
     if (activeClips.isEmpty) {
       throw StateError('No prompts provided');
     }
 
     _isGenerating = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final combinedPrompt = activeClips
           .asMap()
           .entries
-          .map((entry) => 'Clip ${entry.key + 1}: ${entry.value.prompt}')
+          .map(
+            (entry) =>
+                'Clip ${entry.key + 1}: ${entry.value.prompt}',
+          )
           .join('. ');
 
       final first = activeClips.first;
@@ -1080,21 +907,26 @@ class VideoFlowController extends ChangeNotifier {
         seed: first.seed,
         image: first.image,
         lastFrameImage: first.lastFrameImage,
-        referenceImages: first.referenceImages?.isEmpty == true
-            ? null
-            : first.referenceImages,
+        referenceImages:
+            first.referenceImages?.isEmpty == true
+                ? null
+                : first.referenceImages,
       );
 
       _originalVideoUrl = videoUrl;
 
-      // Bake watermark into the local file before preview & save.
+      // ffmpeg로 워터마크 박은 로컬 파일 생성
       final watermarkedFile =
-          await _media.addWatermarkToVideo(inputUrl: videoUrl);
+          await _media.addWatermarkToVideo(
+        inputUrl: videoUrl,
+      );
       _currentVideoUrl = watermarkedFile.path;
       await _preparePlayer(_currentVideoUrl!);
 
       final job = GenerationJob(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: DateTime.now()
+            .millisecondsSinceEpoch
+            .toString(),
         type: JobType.video,
         title: first.prompt.split('\n').first,
         subtitle:
@@ -1121,22 +953,22 @@ class VideoFlowController extends ChangeNotifier {
 
       _currentJob = job;
       _history.addJob(job);
-      notifyListeners();
+      _safeNotifyListeners();
     } finally {
       _isGenerating = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   void addClip() {
     _clips.add(_VideoClip());
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void removeClip(int index) {
     if (_clips.length <= 1) return;
     _clips.removeAt(index);
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void updateClip(
@@ -1160,8 +992,10 @@ class VideoFlowController extends ChangeNotifier {
     if (seed != null) clip.seed = seed;
     if (image != null) clip.image = image;
     if (lastFrameImage != null) clip.lastFrameImage = lastFrameImage;
-    if (referenceImages != null) clip.referenceImages = referenceImages;
-    notifyListeners();
+    if (referenceImages != null) {
+      clip.referenceImages = referenceImages;
+    }
+    _safeNotifyListeners();
   }
 
   Future<void> togglePlayback() async {
@@ -1175,7 +1009,7 @@ class VideoFlowController extends ChangeNotifier {
       await player.play();
       _isPlaying = true;
     }
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   Future<void> markWatermarkCleared() async {
@@ -1187,22 +1021,23 @@ class VideoFlowController extends ChangeNotifier {
     );
     _currentJob = updated;
     _history.updateJob(updated);
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   Future<void> _preparePlayer(String url) async {
     _isVideoReady = false;
     _isPlaying = false;
-    notifyListeners();
+    _safeNotifyListeners();
 
     final previous = _videoController;
-    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    final controller =
+        VideoPlayerController.networkUrl(Uri.parse(url));
     await controller.initialize();
     controller.setLooping(true);
     await previous?.dispose();
     _videoController = controller;
     _isVideoReady = true;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _handleSelection() {
@@ -1212,26 +1047,37 @@ class VideoFlowController extends ChangeNotifier {
     }
     _currentJob = job;
     _originalVideoUrl =
-        (job.parameters['originalUrl'] as String?) ?? job.previewUrl;
+        (job.parameters['originalUrl'] as String?) ??
+            job.previewUrl;
 
     _clips
       ..clear()
       ..add(
         _VideoClip(
           prompt: (job.parameters['prompt'] as String?) ?? '',
-          duration: (job.parameters['duration'] as int?) ?? 5,
-          resolution: (job.parameters['resolution'] as String?) ?? '480p',
-          aspectRatio: (job.parameters['aspectRatio'] as String?) ?? '16:9',
-          cameraFixed: (job.parameters['cameraFixed'] as bool?) ?? false,
+          duration:
+              (job.parameters['duration'] as int?) ?? 5,
+          resolution:
+              (job.parameters['resolution'] as String?) ??
+                  '480p',
+          aspectRatio:
+              (job.parameters['aspectRatio'] as String?) ??
+                  '16:9',
+          cameraFixed:
+              (job.parameters['cameraFixed'] as bool?) ??
+                  false,
           seed: job.parameters['seed'] as int?,
           image: job.parameters['image'] as String?,
-          lastFrameImage: job.parameters['lastFrameImage'] as String?,
-          referenceImages: (job.parameters['referenceImages'] as List<dynamic>?)
-              ?.cast<String>(),
+          lastFrameImage:
+              job.parameters['lastFrameImage'] as String?,
+          referenceImages:
+              (job.parameters['referenceImages']
+                      as List<dynamic>?)
+                  ?.cast<String>(),
         ),
       );
     _isVideoReady = false;
-    notifyListeners();
+    _safeNotifyListeners();
 
     final originalUrl = _originalVideoUrl;
     if (originalUrl == null) return;
@@ -1240,7 +1086,9 @@ class VideoFlowController extends ChangeNotifier {
       try {
         if (job.hasWatermark) {
           final wmFile =
-              await _media.addWatermarkToVideo(inputUrl: originalUrl);
+              await _media.addWatermarkToVideo(
+            inputUrl: originalUrl,
+          );
           _currentVideoUrl = wmFile.path;
         } else {
           _currentVideoUrl = originalUrl;
@@ -1248,8 +1096,8 @@ class VideoFlowController extends ChangeNotifier {
         if (_currentVideoUrl != null) {
           await _preparePlayer(_currentVideoUrl!);
         }
-      } catch (e) {
-        // If watermarking fails, fall back to streaming the original URL.
+      } catch (_) {
+        // 워터마크 실패 시 원본으로라도 재생
         await _preparePlayer(originalUrl);
       }
     }());
@@ -1257,6 +1105,7 @@ class VideoFlowController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _selection.removeListener(_handleSelection);
     _videoController?.dispose();
     super.dispose();
@@ -1283,7 +1132,6 @@ class _VideoClip {
   String resolution;
   String aspectRatio;
   bool cameraFixed;
-  int revision = 0;
   int? seed;
   String? image;
   String? lastFrameImage;

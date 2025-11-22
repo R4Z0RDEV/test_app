@@ -120,8 +120,8 @@ class _ImageScreenState extends State<ImageScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('이미지 저장 실패: $e')),
         );
-      } finally {
-        if (mounted) {
+    } finally {
+      if (mounted) {
           setState(() => _isSavingImage = false);
         }
       }
@@ -206,7 +206,7 @@ class _ImageScreenState extends State<ImageScreen> {
           body: SafeArea(
             top: true,
             bottom: false,
-            child: Column(
+        child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
@@ -217,7 +217,7 @@ class _ImageScreenState extends State<ImageScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: ListView(
                       physics: const BouncingScrollPhysics(),
-                      children: [
+          children: [
                         SectionHeader(
                           title: 'Parameters',
                           trailing: Text(
@@ -238,8 +238,8 @@ class _ImageScreenState extends State<ImageScreen> {
                                 .textTheme
                                 .bodyMedium
                                 ?.copyWith(color: Colors.white60),
-                          ),
-                        ),
+              ),
+            ),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -328,10 +328,10 @@ class _ImagePreview extends StatelessWidget {
                         right: 12,
                         bottom: 12,
                         child: DecoratedBox(
-                          decoration: BoxDecoration(
+              decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.55),
                             borderRadius: BorderRadius.circular(10),
-                          ),
+              ),
                           child: const Padding(
                             padding: EdgeInsets.symmetric(
                               horizontal: 10,
@@ -346,9 +346,9 @@ class _ImagePreview extends StatelessWidget {
                                 color: Colors.white70,
                               ),
                             ),
-                          ),
-                        ),
-                      ),
+                ),
+              ),
+            ),
                   ],
                 ),
               )
@@ -431,20 +431,20 @@ class _ImageForm extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
-          ),
+            ),
           const SizedBox(height: 8),
           TextField(
             controller: controller.promptController,
             maxLines: 3,
-            decoration: InputDecoration(
+              decoration: InputDecoration(
               hintText: 'A cinematic portrait of a cyberpunk explorer...',
-              filled: true,
+                filled: true,
               fillColor: Colors.white.withOpacity(0.03),
-              border: OutlineInputBorder(
+                border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
+                  borderSide: BorderSide.none,
+                ),
               ),
-            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -453,7 +453,7 @@ class _ImageForm extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
-          ),
+            ),
           const SizedBox(height: 8),
           TextField(
             controller: controller.negativePromptController,
@@ -481,7 +481,7 @@ class _ImageForm extends StatelessWidget {
                         (value) => DropdownMenuItem<int>(
                           value: value,
                           child: Text('$value'),
-                        ),
+                      ),
                       )
                       .toList(),
                   onChanged: (value) {
@@ -586,6 +586,7 @@ class ImageGenerationController extends ChangeNotifier {
   final TextEditingController promptController = TextEditingController();
   final TextEditingController negativePromptController = TextEditingController();
 
+  bool _disposed = false;
   String? _imageUrl;
   GenerationJob? _currentJob;
   bool _isGenerating = false;
@@ -604,6 +605,12 @@ class ImageGenerationController extends ChangeNotifier {
   double get guidanceScale => _guidanceScale;
   int get inferenceSteps => _numSteps;
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      _safeNotifyListeners();
+    }
+  }
+
   Future<void> generate() async {
     final prompt = promptController.text.trim();
     if (prompt.isEmpty) {
@@ -611,7 +618,7 @@ class ImageGenerationController extends ChangeNotifier {
     }
 
     _isGenerating = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final imageUrl = await _client.generate(
@@ -650,10 +657,10 @@ class ImageGenerationController extends ChangeNotifier {
 
       _currentJob = job;
       _history.addJob(job);
-      notifyListeners();
+      _safeNotifyListeners();
     } finally {
       _isGenerating = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -666,37 +673,37 @@ class ImageGenerationController extends ChangeNotifier {
     );
     _currentJob = updated;
     _history.updateJob(updated);
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setWidth(int value) {
     if (_width == value) return;
     _width = value;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setHeight(int value) {
     if (_height == value) return;
     _height = value;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setScheduler(String? value) {
     if (value == null || _scheduler == value) return;
     _scheduler = value;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setGuidanceScale(double value) {
     if (_guidanceScale == value) return;
     _guidanceScale = value;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setInferenceSteps(int value) {
     if (_numSteps == value) return;
     _numSteps = value;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _handleSelection() {
@@ -716,11 +723,12 @@ class ImageGenerationController extends ChangeNotifier {
         (job.parameters['guidanceScale'] as num?)?.toDouble() ?? 7.5;
     _numSteps = (job.parameters['numSteps'] as int?) ?? 50;
 
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _selection.removeListener(_handleSelection);
     promptController.dispose();
     negativePromptController.dispose();

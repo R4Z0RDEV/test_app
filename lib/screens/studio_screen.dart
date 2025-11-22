@@ -29,7 +29,7 @@ class StudioScreen extends StatelessWidget {
                     delegate: SliverChildListDelegate(
                       [
                         GlassCard(
-                          child: Column(
+        child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
@@ -73,7 +73,7 @@ class StudioScreen extends StatelessWidget {
                                   ),
                                 )
                               : Column(
-                                  children: [
+          children: [
                                     for (final job in jobs) _JobTile(job: job),
                                   ],
                                 ),
@@ -210,7 +210,7 @@ class _StatCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
+                ),
         ),
       ),
     );
@@ -250,27 +250,27 @@ class _JobTile extends StatelessWidget {
       onTap: () => JobSelection.instance.select(job),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        child: Row(
-          children: [
-            Container(
+      child: Row(
+        children: [
+          Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(
+            decoration: BoxDecoration(
                 color: _accent.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(_icon, color: _accent),
             ),
+              child: Icon(_icon, color: _accent),
+          ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                     job.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                  style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -293,10 +293,10 @@ class _JobTile extends StatelessWidget {
                             fontSize: 10,
                             letterSpacing: 1.1,
                           ),
-                        ),
-                      ),
+                  ),
+                ),
                       const SizedBox(width: 8),
-                      Text(
+                Text(
                         _timeAgo(job.createdAt),
                         style: Theme.of(context)
                             .textTheme
@@ -304,11 +304,11 @@ class _JobTile extends StatelessWidget {
                             ?.copyWith(fontSize: 12, color: Colors.white54),
                       ),
                     ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
+        ],
         ),
       ),
     );

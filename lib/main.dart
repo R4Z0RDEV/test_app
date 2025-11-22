@@ -75,6 +75,8 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   void _onJobSelected() {
+    if (!mounted) return;
+    
     final job = _selection.selected;
     if (job == null) return;
 
@@ -92,7 +94,9 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   void _onTabRouteChanged() {
-    setState(() => _currentTab = _tabController.current);
+    if (mounted) {
+      setState(() => _currentTab = _tabController.current);
+    }
   }
 
   void _onTabSelected(int index) {
@@ -128,7 +132,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             child: GlassBottomNavBar(
               currentIndex: _currentTab.index,
               onTap: _onTabSelected,
-              items: const [
+        items: const [
                 GlassBottomNavItem(icon: Icons.dashboard_rounded, label: 'Studio'),
                 GlassBottomNavItem(icon: Icons.play_circle_fill_rounded, label: 'Video'),
                 GlassBottomNavItem(icon: Icons.brush_rounded, label: 'Image'),

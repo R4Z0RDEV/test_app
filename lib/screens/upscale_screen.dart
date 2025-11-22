@@ -43,7 +43,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
   Future<void> _handleUpscale() async {
     if (!Secrets.hasReplicateToken) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
             'Replicate API 키가 설정되지 않았습니다. .env 파일에 REPLICATE_API_TOKEN 을 추가해 주세요.',
@@ -51,7 +51,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
         ),
       );
       return;
-    }
+  }
     if (!_controller.hasLocalImage) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -101,7 +101,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
         albumName: 'Free AI Creation',
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             ok == true
@@ -109,12 +109,12 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
                 : '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
           ),
         ),
-      );
+        );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('이미지 저장 실패: $e')),
-      );
+        );
     } finally {
       if (mounted) {
         setState(() => _isSavingImage = false);
@@ -125,7 +125,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
   String _mapError(String raw) {
     if (raw.contains('Missing content')) {
       return '이미지를 업로드하지 못했어요. 잠시 후 다시 시도하거나 다른 파일을 선택해 주세요.';
-    }
+      }
     if (raw.contains('No upscaled image URL')) {
       return '업스케일 결과를 받지 못했습니다. 이미지 해상도를 조금 낮춰 다시 시도해 주세요.';
     }
@@ -146,7 +146,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
           body: SafeArea(
             top: true,
             bottom: false,
-            child: Column(
+        child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
@@ -157,7 +157,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: ListView(
                       physics: const BouncingScrollPhysics(),
-                      children: [
+          children: [
                         SectionHeader(
                           title: 'Parameters',
                           trailing: Text(
@@ -180,7 +180,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
                                 Container(
                                   width: 4,
                                   height: 32,
-                                  decoration: BoxDecoration(
+                decoration: BoxDecoration(
                                     color: kDangerColor,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -317,10 +317,10 @@ class _UpscalePreview extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
                     ),
-                  ),
-                ),
+                        ),
+                      ),
               ),
-      ),
+            ),
     );
   }
   Widget _buildOriginalImage(BoxFit fit) {
@@ -365,7 +365,7 @@ class _PreviewLabel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.6),
         borderRadius: BorderRadius.circular(6),
-      ),
+                ),
       child: Text(
         text,
         style: const TextStyle(
@@ -403,8 +403,8 @@ class _UpscaleForm extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                  ),
                 ),
+              ),
               ),
               if (controller.hasLocalImage) ...[
                 const SizedBox(width: 8),
@@ -423,7 +423,7 @@ class _UpscaleForm extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(16),
-              ),
+                ),
               child: Row(
                 children: [
                   const Icon(Icons.check_circle, color: Color(0xFF38BDF8)),
@@ -434,8 +434,8 @@ class _UpscaleForm extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                       ),
-                    ),
-                  ),
+              ),
+            ),
                 ],
               ),
             ),
@@ -463,11 +463,11 @@ class _UpscaleForm extends StatelessWidget {
             title: const Text(
               'Face enhancement',
               style: TextStyle(fontWeight: FontWeight.w700),
-            ),
+                ),
             subtitle: Text(
               'Helps portraits stay sharp during upscales.',
               style: TextStyle(color: Colors.white.withOpacity(0.6)),
-            ),
+              ),
             activeColor: const Color(0xFF38BDF8),
           ),
         ],
@@ -486,6 +486,7 @@ class UpscaleController extends ChangeNotifier {
   final JobSelection _selection = JobSelection.instance;
 
   final ReplicateFileUploader _uploader = const ReplicateFileUploader();
+  bool _disposed = false;
   double _scale = 4;
   bool _faceEnhance = false;
   String? _originalUrl;
@@ -507,6 +508,12 @@ class UpscaleController extends ChangeNotifier {
   bool get hasLocalImage => _originalBytes != null;
   String? get localImageName => _localImageName;
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      _safeNotifyListeners();
+    }
+  }
+
   Future<void> upscale() async {
     if (!hasLocalImage || _originalBytes == null || _localImageName == null) {
       throw StateError('Local image required');
@@ -519,7 +526,7 @@ class UpscaleController extends ChangeNotifier {
     );
 
     _isUpscaling = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final upscaled = await _client.upscale(
@@ -550,27 +557,27 @@ class UpscaleController extends ChangeNotifier {
 
       _currentJob = job;
       _history.addJob(job);
-      notifyListeners();
+      _safeNotifyListeners();
     } finally {
       _isUpscaling = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   void setScale(double value) {
     _scale = double.parse(value.toStringAsFixed(1));
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setFaceEnhance(bool value) {
     if (_faceEnhance == value) return;
     _faceEnhance = value;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setSliderValue(double value) {
     _sliderValue = value;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   Future<void> pickLocalImage() async {
@@ -582,13 +589,13 @@ class UpscaleController extends ChangeNotifier {
     _originalBytes = bytes;
     _originalUrl = null;
     _localImageName = picked.name;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void clearLocalImage() {
     _originalBytes = null;
     _localImageName = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _handleSelection() {
@@ -603,11 +610,12 @@ class UpscaleController extends ChangeNotifier {
     _scale = (job.parameters['scale'] as num?)?.toDouble() ?? 4;
     _faceEnhance = (job.parameters['face_enhance'] as bool?) ?? false;
     _sliderValue = 0.5;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _selection.removeListener(_handleSelection);
     super.dispose();
   }
