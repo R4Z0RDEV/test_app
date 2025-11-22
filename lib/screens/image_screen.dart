@@ -81,28 +81,38 @@ class _ImageScreenState extends State<ImageScreen> {
   Future<void> _handleDownload() async {
     final url = _controller.imageUrl;
     final job = _controller.currentJob;
+    // 이미 생성된 워터마크 파일이 있다면 재활용
+    final wmFile = _controller.watermarkedFile;
+    
     if (url == null || job == null || _isSavingImage) return;
 
     Future<void> saveImage({required bool withWatermark}) async {
       setState(() => _isSavingImage = true);
       try {
-        File file;
+        File fileToSave;
+        
         if (withWatermark) {
-          file = await _media.addWatermarkToImageFromUrl(url);
+          // 워터마크 버전 저장: 이미 만들어둔 파일이 있으면 쓰고, 없으면 새로 만듦
+          if (wmFile != null && await wmFile.exists()) {
+            fileToSave = wmFile;
+          } else {
+            fileToSave = await _media.addWatermarkToImageFromUrl(url);
+          }
         } else {
+          // 워터마크 제거 버전 저장 (원본 다운로드)
           final response = await http.get(Uri.parse(url));
           if (response.statusCode >= 400) {
             throw Exception(
                 '이미지를 다운로드하지 못했습니다. (${response.statusCode})');
           }
           final dir = await getTemporaryDirectory();
-          file = File(
+          fileToSave = File(
               '${dir.path}/image_raw_${DateTime.now().millisecondsSinceEpoch}.png');
-          await file.writeAsBytes(response.bodyBytes, flush: true);
+          await fileToSave.writeAsBytes(response.bodyBytes, flush: true);
         }
 
         final ok = await GallerySaver.saveImage(
-          file.path,
+          fileToSave.path,
           albumName: 'Free AI Creation',
         );
         if (!mounted) return;
@@ -120,13 +130,14 @@ class _ImageScreenState extends State<ImageScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('이미지 저장 실패: $e')),
         );
-    } finally {
-      if (mounted) {
+      } finally {
+        if (mounted) {
           setState(() => _isSavingImage = false);
         }
       }
     }
 
+    // 워터마크가 이미 제거된 상태라면 바로 원본 저장
     if (!job.hasWatermark) {
       await saveImage(withWatermark: false);
       return;
@@ -206,18 +217,19 @@ class _ImageScreenState extends State<ImageScreen> {
           body: SafeArea(
             top: true,
             bottom: false,
-        child: Column(
+            child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                  child: _ImagePreview(controller: _controller, onDownload: _handleDownload),
+                  child: _ImagePreview(
+                      controller: _controller, onDownload: _handleDownload),
                 ),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: ListView(
                       physics: const BouncingScrollPhysics(),
-          children: [
+                      children: [
                         SectionHeader(
                           title: 'Parameters',
                           trailing: Text(
@@ -238,8 +250,8 @@ class _ImageScreenState extends State<ImageScreen> {
                                 .textTheme
                                 .bodyMedium
                                 ?.copyWith(color: Colors.white60),
-              ),
-            ),
+                          ),
+                        ),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -250,7 +262,8 @@ class _ImageScreenState extends State<ImageScreen> {
                   minimum: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                   child: PrimaryGradientButton(
                     label: 'Generate Image',
-                    onPressed: _controller.isGenerating ? null : _handleGenerate,
+                    onPressed:
+                        _controller.isGenerating ? null : _handleGenerate,
                     isLoading: _controller.isGenerating,
                   ),
                 ),
@@ -272,6 +285,10 @@ class _ImagePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasImage = controller.imageUrl != null;
+    final wmFile = controller.watermarkedFile;
+    // 워터마크 파일이 존재하고 워터마크가 필요한 상태라면 로컬 파일(워터마크 됨)을 보여줌
+    final showLocalFile = wmFile != null && (controller.currentJob?.hasWatermark ?? true);
+
     final theme = Theme.of(context);
 
     return GlassCard(
@@ -284,71 +301,55 @@ class _ImagePreview extends StatelessWidget {
                   children: [
                     AspectRatio(
                       aspectRatio: controller.width / controller.height,
-                      child: Image.network(
-                        controller.imageUrl!,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Icon(
-                              Icons.error_outline,
-                              color: Colors.red.withOpacity(0.8),
-                              size: 48,
+                      // [수정됨] 로컬 파일(워터마크) 우선, 없으면 네트워크 이미지(원본) 표시
+                      child: showLocalFile
+                          ? Image.file(
+                              wmFile!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.network(controller.imageUrl!, fit: BoxFit.cover);
+                              },
+                            )
+                          : Image.network(
+                              controller.imageUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red.withOpacity(0.8),
+                                    size: 48,
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                     ),
                     Positioned(
-  right: 12,
-  top: 12,
-  child: Container(
-    decoration: const BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: LinearGradient(
-        colors: [Color(0xFF9B5CFF), Color(0xFFDB5CFF)],
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-      ),
-    ),
-    child: IconButton(
-      icon: const Icon(Icons.download_rounded),
-      color: Colors.white,
-      onPressed: onDownload,
-    ),
-  ),
-),
-                    if (controller.currentJob?.hasWatermark == true)
-                      Positioned(
-                        right: 12,
-                        bottom: 12,
-                        child: DecoratedBox(
-              decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.55),
-                            borderRadius: BorderRadius.circular(10),
-              ),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            child: Text(
-                              'FREE AI CREATION',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.1,
-                                color: Colors.white70,
-                              ),
-                            ),
-                ),
-              ),
-            ),
+                      right: 12,
+                      top: 12,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF9B5CFF), Color(0xFFDB5CFF)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.download_rounded),
+                          color: Colors.white,
+                          onPressed: onDownload,
+                        ),
+                      ),
+                    ),
+                    // 기존 UI Overlay 워터마크는 삭제되었습니다.
                   ],
                 ),
               )
@@ -379,8 +380,7 @@ class _ImagePreview extends StatelessWidget {
                     ),
                   ],
                 ),
-              )
-            ,
+              ),
       ),
     );
   }
@@ -431,20 +431,20 @@ class _ImageForm extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
-            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: controller.promptController,
             maxLines: 3,
-              decoration: InputDecoration(
+            decoration: InputDecoration(
               hintText: 'A cinematic portrait of a cyberpunk explorer...',
-                filled: true,
+              filled: true,
               fillColor: Colors.white.withOpacity(0.03),
-                border: OutlineInputBorder(
+              border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
+                borderSide: BorderSide.none,
               ),
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -453,7 +453,7 @@ class _ImageForm extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
-            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: controller.negativePromptController,
@@ -481,7 +481,7 @@ class _ImageForm extends StatelessWidget {
                         (value) => DropdownMenuItem<int>(
                           value: value,
                           child: Text('$value'),
-                      ),
+                        ),
                       )
                       .toList(),
                   onChanged: (value) {
@@ -582,12 +582,18 @@ class ImageGenerationController extends ChangeNotifier {
   final ReplicateImageClient _client = const ReplicateImageClient();
   final GenerationHistory _history = GenerationHistory.instance;
   final JobSelection _selection = JobSelection.instance;
+  // [추가됨] 워터마크 서비스 인스턴스
+  final MediaWatermarkService _media = MediaWatermarkService.instance;
 
   final TextEditingController promptController = TextEditingController();
-  final TextEditingController negativePromptController = TextEditingController();
+  final TextEditingController negativePromptController =
+      TextEditingController();
 
   bool _disposed = false;
   String? _imageUrl;
+  // [추가됨] 워터마크가 입혀진 로컬 파일 저장 변수
+  File? _watermarkedFile;
+
   GenerationJob? _currentJob;
   bool _isGenerating = false;
   int _width = 768;
@@ -597,6 +603,7 @@ class ImageGenerationController extends ChangeNotifier {
   int _numSteps = 50;
 
   String? get imageUrl => _imageUrl;
+  File? get watermarkedFile => _watermarkedFile;
   GenerationJob? get currentJob => _currentJob;
   bool get isGenerating => _isGenerating;
   int get width => _width;
@@ -607,7 +614,7 @@ class ImageGenerationController extends ChangeNotifier {
 
   void _safeNotifyListeners() {
     if (!_disposed) {
-      _safeNotifyListeners();
+      notifyListeners();
     }
   }
 
@@ -618,6 +625,7 @@ class ImageGenerationController extends ChangeNotifier {
     }
 
     _isGenerating = true;
+    _watermarkedFile = null; // 기존 파일 초기화
     _safeNotifyListeners();
 
     try {
@@ -634,6 +642,13 @@ class ImageGenerationController extends ChangeNotifier {
       );
 
       _imageUrl = imageUrl;
+
+      // [수정됨] 생성 직후 워터마크가 입혀진 로컬 파일을 미리 생성합니다.
+      try {
+        _watermarkedFile = await _media.addWatermarkToImageFromUrl(imageUrl);
+      } catch (e) {
+        print('Watermark creation failed during generation: $e');
+      }
 
       final job = GenerationJob(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -712,6 +727,15 @@ class ImageGenerationController extends ChangeNotifier {
 
     _currentJob = job;
     _imageUrl = job.previewUrl;
+    _watermarkedFile = null; // 히스토리에서 불러올 땐 일단 리셋
+
+    // [선택 사항] 히스토리 선택 시에도 워터마크 바로 보이게 하려면 아래 주석 해제
+    // if (job.hasWatermark) {
+    //   _media.addWatermarkToImageFromUrl(_imageUrl!).then((f) {
+    //     _watermarkedFile = f;
+    //     _safeNotifyListeners();
+    //   });
+    // }
 
     promptController.text = (job.parameters['prompt'] as String?) ?? '';
     negativePromptController.text =

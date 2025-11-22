@@ -41,5 +41,35 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    
+    # FFmpeg 등 네이티브 라이브러리 서명 문제 해결 옵션
+    target.build_configurations.each do |config|
+      config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+      config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+      
+      # 앱이 실행되자마자 죽는 것을 방지하기 위해 Strip Style을 변경
+      config.build_settings['STRIP_STYLE'] = 'non-global' 
+    end
+  end
+
+  # 2. [핵심] Xcode 14.3+ PhaseScriptExecution 에러 자동 수정 패치
+  # "source=$(readlink..." 부분을 찾아서 "-f" 옵션을 강제로 추가합니다.
+  installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+          xcconfig_path = config.base_configuration_reference.real_path
+          build_settings = Hash[*File.read(xcconfig_path).lines.map{|x| x.split(/\s*=\s*/, 2)}.flatten]
+          root = build_settings['PODS_ROOT']
+          
+          # 프레임워크 스크립트 경로 찾기
+          if root
+            file_path = "#{root}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh"
+            if File.exist?(file_path)
+              text = File.read(file_path)
+              # readlink 명령어를 readlink -f 로 변경하여 경로 오류 수정
+              new_contents = text.gsub('source="$(readlink "${source}")"', 'source="$(readlink -f "${source}")"')
+              File.open(file_path, "w") {|file| file.puts new_contents }
+            end
+          end
+      end
   end
 end

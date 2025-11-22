@@ -43,7 +43,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
   Future<void> _handleUpscale() async {
     if (!Secrets.hasReplicateToken) {
       if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
             'Replicate API 키가 설정되지 않았습니다. .env 파일에 REPLICATE_API_TOKEN 을 추가해 주세요.',
@@ -51,7 +51,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
         ),
       );
       return;
-  }
+    }
     if (!_controller.hasLocalImage) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -88,8 +88,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode >= 400) {
-        throw Exception(
-            '업스케일 이미지를 다운로드하지 못했습니다. (${response.statusCode})');
+        throw Exception('업스케일 이미지를 다운로드하지 못했습니다. (${response.statusCode})');
       }
       final dir = await getTemporaryDirectory();
       final file = File(
@@ -101,7 +100,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
         albumName: 'Free AI Creation',
       );
       if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             ok == true
@@ -109,12 +108,12 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
                 : '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
           ),
         ),
-        );
+      );
     } catch (e) {
       if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('이미지 저장 실패: $e')),
-        );
+      );
     } finally {
       if (mounted) {
         setState(() => _isSavingImage = false);
@@ -125,7 +124,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
   String _mapError(String raw) {
     if (raw.contains('Missing content')) {
       return '이미지를 업로드하지 못했어요. 잠시 후 다시 시도하거나 다른 파일을 선택해 주세요.';
-      }
+    }
     if (raw.contains('No upscaled image URL')) {
       return '업스케일 결과를 받지 못했습니다. 이미지 해상도를 조금 낮춰 다시 시도해 주세요.';
     }
@@ -146,18 +145,19 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
           body: SafeArea(
             top: true,
             bottom: false,
-        child: Column(
+            child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                  child: _UpscalePreview(controller: _controller, onDownload: _handleDownload),
+                  child: _UpscalePreview(
+                      controller: _controller, onDownload: _handleDownload),
                 ),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: ListView(
                       physics: const BouncingScrollPhysics(),
-          children: [
+                      children: [
                         SectionHeader(
                           title: 'Parameters',
                           trailing: Text(
@@ -180,7 +180,7 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
                                 Container(
                                   width: 4,
                                   height: 32,
-                decoration: BoxDecoration(
+                                  decoration: BoxDecoration(
                                     color: kDangerColor,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -208,9 +208,10 @@ class _UpscaleScreenState extends State<UpscaleScreen> {
                   minimum: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                   child: PrimaryGradientButton(
                     label: 'Upscale Image',
-                    onPressed: _controller.isUpscaling || !_controller.hasLocalImage
-                        ? null
-                        : _handleUpscale,
+                    onPressed:
+                        _controller.isUpscaling || !_controller.hasLocalImage
+                            ? null
+                            : _handleUpscale,
                     isLoading: _controller.isUpscaling,
                   ),
                 ),
@@ -231,7 +232,9 @@ class _UpscalePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasBoth = controller.originalUrl != null && controller.upscaledUrl != null;
+    // [수정됨] 원본 URL이 있거나(히스토리) OR 원본 Bytes가 있거나(로컬업로드) 둘 중 하나면 OK
+    final hasBoth = (controller.originalUrl != null || controller.originalBytes != null) && 
+                    controller.upscaledUrl != null;
 
     return GlassCard(
       child: AnimatedSwitcher(
@@ -310,19 +313,21 @@ class _UpscalePreview extends StatelessWidget {
                 height: 200,
                 child: Center(
                   child: Text(
-                    controller.originalBytes != null || controller.originalUrl != null
+                    controller.originalBytes != null ||
+                            controller.originalUrl != null
                         ? 'Upscale to view the before & after slider.'
                         : 'Paste an image URL or upload a photo to get started.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
                     ),
-                        ),
-                      ),
+                  ),
+                ),
               ),
-            ),
+      ),
     );
   }
+
   Widget _buildOriginalImage(BoxFit fit) {
     final bytes = controller.originalBytes;
     if (bytes != null) {
@@ -365,7 +370,7 @@ class _PreviewLabel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.6),
         borderRadius: BorderRadius.circular(6),
-                ),
+      ),
       child: Text(
         text,
         style: const TextStyle(
@@ -403,8 +408,8 @@ class _UpscaleForm extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
+                  ),
                 ),
-              ),
               ),
               if (controller.hasLocalImage) ...[
                 const SizedBox(width: 8),
@@ -423,7 +428,7 @@ class _UpscaleForm extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(16),
-                ),
+              ),
               child: Row(
                 children: [
                   const Icon(Icons.check_circle, color: Color(0xFF38BDF8)),
@@ -434,8 +439,8 @@ class _UpscaleForm extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                       ),
-              ),
-            ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -463,11 +468,11 @@ class _UpscaleForm extends StatelessWidget {
             title: const Text(
               'Face enhancement',
               style: TextStyle(fontWeight: FontWeight.w700),
-                ),
+            ),
             subtitle: Text(
               'Helps portraits stay sharp during upscales.',
               style: TextStyle(color: Colors.white.withOpacity(0.6)),
-              ),
+            ),
             activeColor: const Color(0xFF38BDF8),
           ),
         ],
@@ -510,7 +515,7 @@ class UpscaleController extends ChangeNotifier {
 
   void _safeNotifyListeners() {
     if (!_disposed) {
-      _safeNotifyListeners();
+      notifyListeners();
     }
   }
 
@@ -535,7 +540,9 @@ class UpscaleController extends ChangeNotifier {
         faceEnhance: _faceEnhance,
       );
 
-      _originalUrl = null;
+      // [수정됨] 여기서 _originalUrl = null; 을 삭제했습니다. 
+      // 로컬 파일 업스케일시 _originalBytes가 유지되어야 하는데 
+      // 불필요한 초기화를 방지합니다.
       _upscaledUrl = upscaled;
       _sliderValue = 0.5;
 
@@ -582,7 +589,8 @@ class UpscaleController extends ChangeNotifier {
 
   Future<void> pickLocalImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
+    final picked =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
     if (picked == null) return;
 
     final bytes = await picked.readAsBytes();
@@ -643,4 +651,3 @@ class _SplitClipper extends CustomClipper<Rect> {
     return oldClipper.sliderValue != sliderValue;
   }
 }
-

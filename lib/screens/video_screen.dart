@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:gallery_saver/gallery_saver.dart';
@@ -67,7 +68,8 @@ class _VideoScreenState extends State<VideoScreen> {
       await _controller.generate();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Video generated — scroll up to preview.')),
+        const SnackBar(
+            content: Text('Video generated — scroll up to preview.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -194,30 +196,6 @@ class _VideoScreenState extends State<VideoScreen> {
   /// 클립 편집 BottomSheet 열기
   Future<void> _openClipEditor(int index) async {
     final clip = _controller.clips[index];
-    final promptController = TextEditingController(text: clip.prompt);
-    final imageController = TextEditingController(text: clip.image ?? '');
-    final lastFrameController =
-        TextEditingController(text: clip.lastFrameImage ?? '');
-    final referenceController = TextEditingController(
-      text: (clip.referenceImages ?? []).join(', '),
-    );
-    final seedController =
-        TextEditingController(text: clip.seed?.toString() ?? '');
-
-    int duration = clip.duration.clamp(2, 5);
-    String aspectRatio = clip.aspectRatio;
-    bool cameraFixed = clip.cameraFixed;
-
-    const durationOptions = [2, 3, 4, 5];
-    const ratioOptions = [
-      '16:9',
-      '4:3',
-      '1:1',
-      '3:4',
-      '9:16',
-      '21:9',
-      '9:21',
-    ];
 
     await showModalBottomSheet<void>(
       context: context,
@@ -227,311 +205,30 @@ class _VideoScreenState extends State<VideoScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.8,
-          maxChildSize: 0.95,
-          minChildSize: 0.4,
-          builder: (ctx, scrollController) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 12,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-              ),
-              child: StatefulBuilder(
-                builder: (ctx, setState) {
-                  return SingleChildScrollView(
-                    controller: scrollController,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                        Text(
-                          'Clip ${index + 1}',
-                          style:
-                              Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                                    fontSize: 22,
-                                  ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Edit prompt and parameters for this segment.',
-                          style:
-                              Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white54,
-                                  ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: promptController,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            labelText: 'Prompt',
-                            hintText: 'Describe this clip...',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.03),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: imageController,
-                          decoration: InputDecoration(
-                            labelText: 'Image URL (optional)',
-                            hintText: 'https://example.com/start_frame.png',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.03),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: lastFrameController,
-                          decoration: InputDecoration(
-                            labelText: 'Last frame image URL (optional)',
-                            hintText: 'https://example.com/end_frame.png',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.03),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: referenceController,
-                          maxLines: 2,
-                          decoration: InputDecoration(
-                            labelText: 'Reference images (comma separated)',
-                            hintText:
-                                'https://ex.com/a.png, https://ex.com/b.png',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.03),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<int>(
-                                value: duration,
-                                decoration: InputDecoration(
-                                  labelText: 'Duration (seconds)',
-                                  filled: true,
-                                  fillColor: Colors.white.withOpacity(0.03),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                ),
-                                dropdownColor: const Color(0xFF111322),
-                                items: durationOptions
-                                    .map(
-                                      (d) => DropdownMenuItem<int>(
-                                        value: d,
-                                        child: Text('${d}s'),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) {
-                                  if (value == null) return;
-                                  setState(() => duration = value);
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: aspectRatio,
-                                decoration: InputDecoration(
-                                  labelText: 'Aspect ratio',
-                                  filled: true,
-                                  fillColor: Colors.white.withOpacity(0.03),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                ),
-                                dropdownColor: const Color(0xFF111322),
-                                items: ratioOptions
-                                    .map(
-                                      (r) => DropdownMenuItem<String>(
-                                        value: r,
-                                        child: Text(r),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) {
-                                  if (value == null) return;
-                                  setState(() => aspectRatio = value);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          value: cameraFixed,
-                          onChanged: (value) =>
-                              setState(() => cameraFixed = value),
-                          title: const Text(
-                            'Lock camera movement',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            'Use reference frame and keep camera static.',
-                            style: TextStyle(
-                              color: Colors.white70,
-                            ),
-                          ),
-                          activeColor: const Color(0xFF9F7CFF),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: seedController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Seed (optional)',
-                            hintText: 'Leave empty for random',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.03),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'FPS: 24 (fixed) • Resolution: 480p',
-                          style:
-                              Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                                    color: Colors.white54,
-                                  ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            if (_controller.clips.length > 1)
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(ctx).pop();
-                                  _controller.removeClip(index);
-                                },
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.redAccent,
-                                ),
-                                child: const Text('Delete clip'),
-                              ),
-                            const Spacer(),
-                            ElevatedButton(
-                              onPressed: () {
-                                final seedText =
-                                    seedController.text.trim();
-                                final seed = seedText.isEmpty
-                                    ? null
-                                    : int.tryParse(seedText);
-
-                                final refText =
-                                    referenceController.text.trim();
-                                final refs = refText.isEmpty
-                                    ? null
-                                    : refText
-                                        .split(',')
-                                        .map((e) => e.trim())
-                                        .where((e) => e.isNotEmpty)
-                                        .toList();
-
-                                _controller.updateClip(
-                                  index,
-                                  prompt: promptController.text,
-                                  duration: duration,
-                                  aspectRatio: aspectRatio,
-                                  cameraFixed: cameraFixed,
-                                  seed: seed,
-                                  image: _normalizeUrl(
-                                      imageController.text),
-                                  lastFrameImage: _normalizeUrl(
-                                      lastFrameController.text),
-                                  referenceImages: refs,
-                                );
-                                Navigator.of(ctx).pop();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF9F7CFF),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
-                              child: const Text(
-                                'Save',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+        return _ClipEditorSheet(
+          clip: clip,
+          clipIndex: index,
+          onDelete: () {
+            Navigator.of(ctx).pop();
+            _controller.removeClip(index);
+          },
+          onSave: (updatedData) {
+            _controller.updateClip(
+              index,
+              prompt: updatedData['prompt'],
+              duration: updatedData['duration'],
+              aspectRatio: updatedData['aspectRatio'],
+              cameraFixed: updatedData['cameraFixed'],
+              seed: updatedData['seed'],
+              image: updatedData['image'],
+              lastFrameImage: updatedData['lastFrameImage'],
+              referenceImages: updatedData['referenceImages'],
             );
+            Navigator.of(ctx).pop();
           },
         );
       },
     );
-
-    promptController.dispose();
-    imageController.dispose();
-    lastFrameController.dispose();
-    referenceController.dispose();
-    seedController.dispose();
-  }
-
-  String? _normalizeUrl(String? text) {
-    if (text == null) return null;
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return null;
-    return trimmed;
   }
 
   @override
@@ -573,13 +270,11 @@ class _VideoScreenState extends State<VideoScreen> {
                         const SizedBox(height: 12),
                         ..._controller.clips.asMap().entries.map(
                               (entry) => Padding(
-                                padding:
-                                    const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.only(bottom: 8),
                                 child: _ClipSummaryTile(
                                   index: entry.key,
                                   clip: entry.value,
-                                  onTap: () =>
-                                      _openClipEditor(entry.key),
+                                  onTap: () => _openClipEditor(entry.key),
                                 ),
                               ),
                             ),
@@ -604,8 +299,7 @@ class _VideoScreenState extends State<VideoScreen> {
                 ),
                 SafeArea(
                   top: false,
-                  minimum:
-                      const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  minimum: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                   child: PrimaryGradientButton(
                     label: 'Generate Flow',
                     onPressed: _controller.isGenerating
@@ -615,6 +309,340 @@ class _VideoScreenState extends State<VideoScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ClipEditorSheet extends StatefulWidget {
+  final _VideoClip clip;
+  final int clipIndex;
+  final VoidCallback onDelete;
+  final Function(Map<String, dynamic>) onSave;
+
+  const _ClipEditorSheet({
+    required this.clip,
+    required this.clipIndex,
+    required this.onDelete,
+    required this.onSave,
+  });
+
+  @override
+  State<_ClipEditorSheet> createState() => _ClipEditorSheetState();
+}
+
+class _ClipEditorSheetState extends State<_ClipEditorSheet> {
+  late final TextEditingController promptController;
+  late final TextEditingController imageController;
+  late final TextEditingController lastFrameController;
+  late final TextEditingController referenceController;
+  late final TextEditingController seedController;
+
+  late int duration;
+  late String aspectRatio;
+  late bool cameraFixed;
+
+  @override
+  void initState() {
+    super.initState();
+    promptController = TextEditingController(text: widget.clip.prompt);
+    imageController = TextEditingController(text: widget.clip.image ?? '');
+    lastFrameController =
+        TextEditingController(text: widget.clip.lastFrameImage ?? '');
+    referenceController = TextEditingController(
+      text: (widget.clip.referenceImages ?? []).join(', '),
+    );
+    seedController =
+        TextEditingController(text: widget.clip.seed?.toString() ?? '');
+
+    duration = widget.clip.duration.clamp(2, 5);
+    aspectRatio = widget.clip.aspectRatio;
+    cameraFixed = widget.clip.cameraFixed;
+  }
+
+  @override
+  void dispose() {
+    promptController.dispose();
+    imageController.dispose();
+    lastFrameController.dispose();
+    referenceController.dispose();
+    seedController.dispose();
+    super.dispose();
+  }
+
+  String? _normalizeUrl(String? text) {
+    if (text == null) return null;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return null;
+    return trimmed;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const durationOptions = [2, 3, 4, 5];
+    const ratioOptions = [
+      '16:9',
+      '4:3',
+      '1:1',
+      '3:4',
+      '9:16',
+      '21:9',
+      '9:21'
+    ];
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.8,
+      maxChildSize: 0.95,
+      minChildSize: 0.4,
+      builder: (ctx, scrollController) {
+        return GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 12,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: SingleChildScrollView(
+              controller: scrollController,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Clip ${widget.clipIndex + 1}',
+                    style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                          fontSize: 22,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Edit prompt and parameters for this segment.',
+                    style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white54,
+                        ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: promptController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'Prompt',
+                      hintText: 'Describe this clip...',
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.03),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: imageController,
+                    decoration: InputDecoration(
+                      labelText: 'Image URL (optional)',
+                      hintText: 'https://example.com/start_frame.png',
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.03),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: lastFrameController,
+                    decoration: InputDecoration(
+                      labelText: 'Last frame image URL (optional)',
+                      hintText: 'https://example.com/end_frame.png',
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.03),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: referenceController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: 'Reference images (comma separated)',
+                      hintText: 'https://ex.com/a.png, https://ex.com/b.png',
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.03),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          value: duration,
+                          decoration: InputDecoration(
+                            labelText: 'Duration',
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.03),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                          ),
+                          dropdownColor: const Color(0xFF111322),
+                          items: durationOptions
+                              .map((d) => DropdownMenuItem(
+                                  value: d, child: Text('${d}s')))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => duration = val);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: aspectRatio,
+                          decoration: InputDecoration(
+                            labelText: 'Aspect ratio',
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.03),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                          ),
+                          dropdownColor: const Color(0xFF111322),
+                          items: ratioOptions
+                              .map((r) => DropdownMenuItem(
+                                  value: r, child: Text(r)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => aspectRatio = val);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    value: cameraFixed,
+                    onChanged: (val) => setState(() => cameraFixed = val),
+                    title: const Text(
+                      'Lock camera movement',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: const Text(
+                      'Use reference frame and keep camera static.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    activeColor: const Color(0xFF9F7CFF),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: seedController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Seed (optional)',
+                      hintText: 'Leave empty for random',
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.03),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: widget.onDelete,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
+                        ),
+                        child: const Text('Delete clip'),
+                      ),
+                      const Spacer(),
+                      ElevatedButton(
+                        onPressed: () {
+                          final seedText = seedController.text.trim();
+                          final seed =
+                              seedText.isEmpty ? null : int.tryParse(seedText);
+
+                          final refText = referenceController.text.trim();
+                          final refs = refText.isEmpty
+                              ? null
+                              : refText
+                                  .split(',')
+                                  .map((e) => e.trim())
+                                  .where((e) => e.isNotEmpty)
+                                  .toList();
+
+                          widget.onSave({
+                            'prompt': promptController.text,
+                            'duration': duration,
+                            'aspectRatio': aspectRatio,
+                            'cameraFixed': cameraFixed,
+                            'seed': seed,
+                            'image': _normalizeUrl(imageController.text),
+                            'lastFrameImage':
+                                _normalizeUrl(lastFrameController.text),
+                            'referenceImages': refs,
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF9F7CFF),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -667,35 +695,7 @@ class _VideoPreviewCard extends StatelessWidget {
                             const Center(
                               child: CircularProgressIndicator(),
                             ),
-                          if (controller.currentJob?.hasWatermark ==
-                              true)
-                            Positioned(
-                              right: 12,
-                              bottom: 12,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: Colors.black
-                                      .withOpacity(0.55),
-                                  borderRadius:
-                                      BorderRadius.circular(10),
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  child: Text(
-                                    'FREE AI CREATION',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.1,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                          // [수정됨] 여기에 있던 "FREE AI CREATION" 워터마크 UI를 삭제했습니다.
                           if (controller.isVideoReady)
                             Positioned.fill(
                               child: Center(
@@ -704,13 +704,10 @@ class _VideoPreviewCard extends StatelessWidget {
                                   color: Colors.white,
                                   icon: Icon(
                                     controller.isPlaying
-                                        ? Icons
-                                            .pause_circle_filled_rounded
-                                        : Icons
-                                            .play_circle_filled_rounded,
+                                        ? Icons.pause_circle_filled_rounded
+                                        : Icons.play_circle_filled_rounded,
                                   ),
-                                  onPressed:
-                                      controller.togglePlayback,
+                                  onPressed: controller.togglePlayback,
                                 ),
                               ),
                             ),
@@ -739,8 +736,7 @@ class _VideoPreviewCard extends StatelessWidget {
                         )
                       else
                         IconButton(
-                          icon: const Icon(
-                              Icons.download_rounded),
+                          icon: const Icon(Icons.download_rounded),
                           color: Colors.white,
                           onPressed: onDownload,
                         ),
@@ -751,8 +747,7 @@ class _VideoPreviewCard extends StatelessWidget {
             : SizedBox(
                 height: 220,
                 child: Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
                       width: 70,
@@ -800,8 +795,7 @@ class _ClipSummaryTile extends StatelessWidget {
         prompt.isEmpty ? 'Tap to edit clip' : prompt.split('\n').first;
 
     return GlassCard(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         title: Text(
@@ -815,10 +809,7 @@ class _ClipSummaryTile extends StatelessWidget {
           subtitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Colors.white70,
               ),
         ),
@@ -838,10 +829,8 @@ class VideoFlowController extends ChangeNotifier {
   }
 
   final ReplicateVideoClient _client = const ReplicateVideoClient();
-  final MediaWatermarkService _media =
-      MediaWatermarkService.instance;
-  final GenerationHistory _history =
-      GenerationHistory.instance;
+  final MediaWatermarkService _media = MediaWatermarkService.instance;
+  final GenerationHistory _history = GenerationHistory.instance;
   final JobSelection _selection = JobSelection.instance;
 
   final List<_VideoClip> _clips = [_VideoClip()];
@@ -864,8 +853,7 @@ class VideoFlowController extends ChangeNotifier {
   GenerationJob? get currentJob => _currentJob;
   VideoPlayerController? get videoController => _videoController;
 
-  bool get hasPrompts =>
-      _clips.any((clip) => clip.prompt.trim().isNotEmpty);
+  bool get hasPrompts => _clips.any((clip) => clip.prompt.trim().isNotEmpty);
 
   void _safeNotifyListeners() {
     if (!_disposed) {
@@ -874,9 +862,8 @@ class VideoFlowController extends ChangeNotifier {
   }
 
   Future<void> generate() async {
-    final activeClips = _clips
-        .where((clip) => clip.prompt.trim().isNotEmpty)
-        .toList();
+    final activeClips =
+        _clips.where((clip) => clip.prompt.trim().isNotEmpty).toList();
     if (activeClips.isEmpty) {
       throw StateError('No prompts provided');
     }
@@ -889,8 +876,7 @@ class VideoFlowController extends ChangeNotifier {
           .asMap()
           .entries
           .map(
-            (entry) =>
-                'Clip ${entry.key + 1}: ${entry.value.prompt}',
+            (entry) => 'Clip ${entry.key + 1}: ${entry.value.prompt}',
           )
           .join('. ');
 
@@ -907,26 +893,22 @@ class VideoFlowController extends ChangeNotifier {
         seed: first.seed,
         image: first.image,
         lastFrameImage: first.lastFrameImage,
-        referenceImages:
-            first.referenceImages?.isEmpty == true
-                ? null
-                : first.referenceImages,
+        referenceImages: first.referenceImages?.isEmpty == true
+            ? null
+            : first.referenceImages,
       );
 
       _originalVideoUrl = videoUrl;
 
       // ffmpeg로 워터마크 박은 로컬 파일 생성
-      final watermarkedFile =
-          await _media.addWatermarkToVideo(
+      final watermarkedFile = await _media.addWatermarkToVideo(
         inputUrl: videoUrl,
       );
       _currentVideoUrl = watermarkedFile.path;
       await _preparePlayer(_currentVideoUrl!);
 
       final job = GenerationJob(
-        id: DateTime.now()
-            .millisecondsSinceEpoch
-            .toString(),
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         type: JobType.video,
         title: first.prompt.split('\n').first,
         subtitle:
@@ -1030,13 +1012,24 @@ class VideoFlowController extends ChangeNotifier {
     _safeNotifyListeners();
 
     final previous = _videoController;
-    final controller =
-        VideoPlayerController.networkUrl(Uri.parse(url));
-    await controller.initialize();
-    controller.setLooping(true);
-    await previous?.dispose();
-    _videoController = controller;
-    _isVideoReady = true;
+    VideoPlayerController controller;
+
+    if (url.startsWith('http') || url.startsWith('https')) {
+      controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    } else {
+      controller = VideoPlayerController.file(File(url));
+    }
+
+    try {
+      await controller.initialize();
+      controller.setLooping(true);
+      await previous?.dispose();
+      _videoController = controller;
+      _isVideoReady = true;
+    } catch (e) {
+      print('Video initialization error: $e');
+    }
+
     _safeNotifyListeners();
   }
 
@@ -1047,32 +1040,22 @@ class VideoFlowController extends ChangeNotifier {
     }
     _currentJob = job;
     _originalVideoUrl =
-        (job.parameters['originalUrl'] as String?) ??
-            job.previewUrl;
+        (job.parameters['originalUrl'] as String?) ?? job.previewUrl;
 
     _clips
       ..clear()
       ..add(
         _VideoClip(
           prompt: (job.parameters['prompt'] as String?) ?? '',
-          duration:
-              (job.parameters['duration'] as int?) ?? 5,
-          resolution:
-              (job.parameters['resolution'] as String?) ??
-                  '480p',
-          aspectRatio:
-              (job.parameters['aspectRatio'] as String?) ??
-                  '16:9',
-          cameraFixed:
-              (job.parameters['cameraFixed'] as bool?) ??
-                  false,
+          duration: (job.parameters['duration'] as int?) ?? 5,
+          resolution: (job.parameters['resolution'] as String?) ?? '480p',
+          aspectRatio: (job.parameters['aspectRatio'] as String?) ?? '16:9',
+          cameraFixed: (job.parameters['cameraFixed'] as bool?) ?? false,
           seed: job.parameters['seed'] as int?,
           image: job.parameters['image'] as String?,
-          lastFrameImage:
-              job.parameters['lastFrameImage'] as String?,
+          lastFrameImage: job.parameters['lastFrameImage'] as String?,
           referenceImages:
-              (job.parameters['referenceImages']
-                      as List<dynamic>?)
+              (job.parameters['referenceImages'] as List<dynamic>?)
                   ?.cast<String>(),
         ),
       );
@@ -1085,8 +1068,7 @@ class VideoFlowController extends ChangeNotifier {
     unawaited(() async {
       try {
         if (job.hasWatermark) {
-          final wmFile =
-              await _media.addWatermarkToVideo(
+          final wmFile = await _media.addWatermarkToVideo(
             inputUrl: originalUrl,
           );
           _currentVideoUrl = wmFile.path;
@@ -1097,7 +1079,6 @@ class VideoFlowController extends ChangeNotifier {
           await _preparePlayer(_currentVideoUrl!);
         }
       } catch (_) {
-        // 워터마크 실패 시 원본으로라도 재생
         await _preparePlayer(originalUrl);
       }
     }());

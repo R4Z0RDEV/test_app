@@ -1,5 +1,3 @@
-// lib/services/media_watermark_service.dart
-
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -32,25 +30,21 @@ class MediaWatermarkService {
     }
   }
 
-  /// 1) 비디오에 PNG 워터마크 입힌 새 mp4 파일 생성
+  /// 1) 비디오에 PNG 워터마크 입힌 새 mp4 파일 생성 (ffmpeg)
   Future<File> addWatermarkToVideo({required String inputUrl}) async {
-    // 입력 비디오를 로컬 파일로 확보
     final inputFile = await _ensureLocalFile(inputUrl, 'video_input.mp4');
-
-    // 워터마크 PNG를 임시 디렉토리에 저장
     final wmBytes =
         await rootBundle.load('assets/watermark/free_ai_creation.png');
     final tmpDir = await getTemporaryDirectory();
     final wmFile = File('${tmpDir.path}/wm.png');
     await wmFile.writeAsBytes(wmBytes.buffer.asUint8List());
 
-    // 출력 경로
     final outputPath =
         '${tmpDir.path}/watermarked_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
-    // ffmpeg 명령어: 우측 하단에 overlay
+    // 워터마크 너비를 350px로 리사이즈하고 왼쪽 하단(여백 24px)에 배치
     final cmd =
-        '-i "${inputFile.path}" -i "${wmFile.path}" -filter_complex "overlay=W-w-32:H-h-24" -codec:a copy "$outputPath"';
+        '-i "${inputFile.path}" -i "${wmFile.path}" -filter_complex "[1:v]scale=350:-1[wm];[0:v][wm]overlay=24:H-h-24" -codec:a copy "$outputPath"';
 
     final session = await FFmpegKit.execute(cmd);
     final returnCode = await session.getReturnCode();
@@ -58,7 +52,7 @@ class MediaWatermarkService {
     if (ReturnCode.isSuccess(returnCode)) {
       return File(outputPath);
     } else {
-      // 실패하면 원본 비디오라도 리턴해서 앱이 죽지 않게
+      print('FFmpeg failed. Outputting original file instead.');
       return inputFile;
     }
   }
@@ -72,15 +66,13 @@ class MediaWatermarkService {
     return addWatermarkToImageBytes(res.bodyBytes);
   }
 
-  /// 3) 바이트 배열 이미지를 받아 워터마크 PNG 합성
+  /// 3) 바이트 배열 이미지를 받아 워터마크 PNG 합성 (image 패키지 사용)
   Future<File> addWatermarkToImageBytes(Uint8List bytes) async {
-    // 원본 이미지 디코드
     final original = img.decodeImage(bytes);
     if (original == null) {
       throw Exception('Invalid input image bytes');
     }
 
-    // 워터마크 PNG 로드 & 디코드
     final wmBytes =
         await rootBundle.load('assets/watermark/free_ai_creation.png');
     final wmImage = img.decodeImage(wmBytes.buffer.asUint8List());
@@ -95,12 +87,11 @@ class MediaWatermarkService {
       width: targetW,
     );
 
-    // 우측 하단 위치 계산
     const margin = 24;
-    final dstX = original.width - resizedWm.width - margin;
-    final dstY = original.height - resizedWm.height - margin;
+    // [수정됨] 왼쪽 하단 위치 계산
+    final dstX = margin; // 왼쪽 여백만 둠
+    final dstY = original.height - resizedWm.height - margin; // 바닥 여백
 
-    // 워터마크 합성 (현재 image 패키지 버전에 맞게 compositeImage 사용)
     final composited = img.compositeImage(
       original,
       resizedWm,
@@ -108,7 +99,6 @@ class MediaWatermarkService {
       dstY: dstY,
     );
 
-    // PNG로 인코드 후 temp 파일에 저장
     final outBytes = img.encodePng(composited);
     final dir = await getTemporaryDirectory();
     final outFile = File(
