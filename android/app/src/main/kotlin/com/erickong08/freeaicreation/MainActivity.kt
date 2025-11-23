@@ -1,4 +1,4 @@
-package com.example.test_app
+package com.erickong08.freeaicreation
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

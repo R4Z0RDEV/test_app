@@ -19,6 +19,7 @@ allprojects {
         resolutionStrategy {
             dependencySubstitution {
                 substitute module("com.arthenica:ffmpeg-kit-https:6.0-2.LTS") using module("com.arthenica:ffmpeg-kit-full-gpl:6.0-2")
+                substitute module("com.arthenica.ffmpegkit:flutter:7.0") using module("com.arthenica:ffmpeg-kit-full-gpl:6.0-2")
             }
         }
     }

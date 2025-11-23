@@ -175,31 +175,47 @@ class _ImageScreenState extends State<ImageScreen> {
                           saveImage(withWatermark: true);
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.08),
+                    backgroundColor: Colors.white.withOpacity(0.1),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: const Text('Save with watermark'),
+                  child: const Text(
+                    'Save with watermark',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: _isSavingImage
+                InkWell(
+                  onTap: _isSavingImage
                       ? null
                       : () async {
                           Navigator.pop(context);
-                          
-                          // [수정] 워터마크 제거 시 AdMob 광고 시청
                           final rewardEarned = await _adMobService.showRewardedAd(context);
                           if (!rewardEarned) return;
-                          
                           await _controller.markWatermarkCleared();
                           if (!mounted) return;
                           await saveImage(withWatermark: false);
                         },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4ADE80),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'Watch ad to remove watermark',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                  child: const Text('Watch ad to remove watermark'),
                 ),
               ],
             ),

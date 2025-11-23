@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data'; // [추가] Uint8List 사용
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
+import 'package:image_picker/image_picker.dart'; // [추가] 이미지 피커
 import 'package:test_app/config/secrets.dart';
 import 'package:test_app/theme/app_theme.dart';
 import 'package:test_app/ui/glass_card.dart';
@@ -139,29 +141,47 @@ class _VideoScreenState extends State<VideoScreen> {
                           saveWithWatermarkStatus(clearWatermark: false);
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.08),
+                    backgroundColor: Colors.white.withOpacity(0.1),
+                    foregroundColor: Colors.white, // 텍스트 색상 명시
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: const Text('Save with watermark'),
+                  child: const Text(
+                    'Save with watermark',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: _isSavingVideo
+                // [수정] 가독성 개선: Primary Gradient 스타일 적용 (Container로 감싸서 InkWell 사용하거나 PrimaryGradientButton 재사용)
+                // 여기서는 PrimaryGradientButton이 full width 확장이 안될 수 있으므로 직접 구현 또는 Container 사용
+                InkWell(
+                  onTap: _isSavingVideo
                       ? null
                       : () async {
                           Navigator.pop(context);
-                          
-                          // [수정] 워터마크 제거 시 광고 시청
                           final rewardEarned = await _adMobService.showRewardedAd(context);
                           if (!rewardEarned) return;
-
                           await saveWithWatermarkStatus(clearWatermark: true);
                         },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF9F7CFF),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'Watch ad to remove watermark',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                  child: const Text('Watch ad to remove watermark'),
                 ),
               ],
             ),
@@ -342,10 +362,12 @@ class _ClipEditorSheet extends StatefulWidget {
 
 class _ClipEditorSheetState extends State<_ClipEditorSheet> {
   late final TextEditingController promptController;
-  late final TextEditingController imageController;
-  late final TextEditingController lastFrameController;
-  late final TextEditingController referenceController;
   late final TextEditingController seedController;
+
+  // 이미지 URL 상태 (TextField 제거하고 직접 상태 관리)
+  String? image;
+  String? lastFrameImage;
+  List<String>? referenceImages;
 
   late int duration;
   late String aspectRatio;
@@ -355,14 +377,12 @@ class _ClipEditorSheetState extends State<_ClipEditorSheet> {
   void initState() {
     super.initState();
     promptController = TextEditingController(text: widget.clip.prompt);
-    imageController = TextEditingController(text: widget.clip.image ?? '');
-    lastFrameController =
-        TextEditingController(text: widget.clip.lastFrameImage ?? '');
-    referenceController = TextEditingController(
-      text: (widget.clip.referenceImages ?? []).join(', '),
-    );
     seedController =
         TextEditingController(text: widget.clip.seed?.toString() ?? '');
+
+    image = widget.clip.image;
+    lastFrameImage = widget.clip.lastFrameImage;
+    referenceImages = widget.clip.referenceImages;
 
     duration = widget.clip.duration.clamp(2, 5);
     aspectRatio = widget.clip.aspectRatio;
@@ -371,20 +391,9 @@ class _ClipEditorSheetState extends State<_ClipEditorSheet> {
 
   @override
   void dispose() {
-    // 위젯이 화면에서 완전히 사라질 때 컨트롤러를 정리하여 안전합니다.
     promptController.dispose();
-    imageController.dispose();
-    lastFrameController.dispose();
-    referenceController.dispose();
     seedController.dispose();
     super.dispose();
-  }
-
-  String? _normalizeUrl(String? text) {
-    if (text == null) return null;
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return null;
-    return trimmed;
   }
 
   @override
@@ -402,11 +411,10 @@ class _ClipEditorSheetState extends State<_ClipEditorSheet> {
 
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.8,
+      initialChildSize: 0.85,
       maxChildSize: 0.95,
       minChildSize: 0.4,
       builder: (ctx, scrollController) {
-        // GestureDetector를 사용하여 빈 곳 터치 시 키보드를 내립니다.
         return GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
           child: Padding(
@@ -461,49 +469,27 @@ class _ClipEditorSheetState extends State<_ClipEditorSheet> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: imageController,
-                    decoration: InputDecoration(
-                      labelText: 'Image URL (optional)',
-                      hintText: 'https://example.com/start_frame.png',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.03),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: lastFrameController,
-                    decoration: InputDecoration(
-                      labelText: 'Last frame image URL (optional)',
-                      hintText: 'https://example.com/end_frame.png',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.03),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: referenceController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Reference images (comma separated)',
-                      hintText: 'https://ex.com/a.png, https://ex.com/b.png',
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.03),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
+                  // [변경] 이미지 업로더 위젯 사용
+                  _ImagePickerInput(
+                    label: 'Image (optional)',
+                    imageUrl: image,
+                    onChanged: (url) => setState(() => image = url),
                   ),
                   const SizedBox(height: 16),
+                  _ImagePickerInput(
+                    label: 'Last Frame Image (optional)',
+                    imageUrl: lastFrameImage,
+                    onChanged: (url) => setState(() => lastFrameImage = url),
+                  ),
+                  const SizedBox(height: 16),
+                  // [변경] 다중 이미지 업로더 위젯 사용
+                  _MultiImagePickerInput(
+                    label: 'Reference Images (1-4 images)',
+                    imageUrls: referenceImages,
+                    onChanged: (urls) => setState(() => referenceImages = urls),
+                    maxImages: 4,
+                  ),
+                  const SizedBox(height: 24),
                   Row(
                     children: [
                       Expanded(
@@ -601,50 +587,26 @@ class _ClipEditorSheetState extends State<_ClipEditorSheet> {
                         ),
                         child: const Text('Delete clip'),
                       ),
-                      const Spacer(),
-                      ElevatedButton(
-                        onPressed: () {
-                          final seedText = seedController.text.trim();
-                          final seed =
-                              seedText.isEmpty ? null : int.tryParse(seedText);
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: PrimaryGradientButton(
+                          onPressed: () {
+                            final seedText = seedController.text.trim();
+                            final seed =
+                                seedText.isEmpty ? null : int.tryParse(seedText);
 
-                          final refText = referenceController.text.trim();
-                          final refs = refText.isEmpty
-                              ? null
-                              : refText
-                                  .split(',')
-                                  .map((e) => e.trim())
-                                  .where((e) => e.isNotEmpty)
-                                  .toList();
-
-                          widget.onSave({
-                            'prompt': promptController.text,
-                            'duration': duration,
-                            'aspectRatio': aspectRatio,
-                            'cameraFixed': cameraFixed,
-                            'seed': seed,
-                            'image': _normalizeUrl(imageController.text),
-                            'lastFrameImage':
-                                _normalizeUrl(lastFrameController.text),
-                            'referenceImages': refs,
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF9F7CFF),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: const Text(
-                          'Save',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                            widget.onSave({
+                              'prompt': promptController.text,
+                              'duration': duration,
+                              'aspectRatio': aspectRatio,
+                              'cameraFixed': cameraFixed,
+                              'seed': seed,
+                              'image': image,
+                              'lastFrameImage': lastFrameImage,
+                              'referenceImages': referenceImages,
+                            });
+                          },
+                          label: 'Save',
                         ),
                       ),
                     ],
@@ -1089,6 +1051,366 @@ class VideoFlowController extends ChangeNotifier {
     _selection.removeListener(_handleSelection);
     _videoController?.dispose();
     super.dispose();
+  }
+}
+
+class _ImagePickerInput extends StatefulWidget {
+  final String label;
+  final String? imageUrl;
+  final ValueChanged<String?> onChanged;
+
+  const _ImagePickerInput({
+    required this.label,
+    required this.imageUrl,
+    required this.onChanged,
+  });
+
+  @override
+  State<_ImagePickerInput> createState() => _ImagePickerInputState();
+}
+
+class _ImagePickerInputState extends State<_ImagePickerInput> {
+  bool _isUploading = false;
+  Uint8List? _localBytes; // [추가] 로컬 미리보기용 바이트 데이터
+
+  @override
+  void didUpdateWidget(_ImagePickerInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 외부에서 URL이 변경되거나(예: 초기화) null이 되면 로컬 미리보기도 초기화
+    if (widget.imageUrl == null && _localBytes != null) {
+      _localBytes = null;
+    }
+  }
+
+  Future<void> _pickAndUpload() async {
+    final picker = ImagePicker();
+    try {
+      final xFile = await picker.pickImage(source: ImageSource.gallery);
+      if (xFile == null) return;
+
+      // [추가] 선택 즉시 로컬 미리보기 표시
+      final bytes = await xFile.readAsBytes();
+      setState(() {
+        _localBytes = bytes;
+        _isUploading = true;
+      });
+
+      final url = await const ReplicateFileUploader().uploadBytes(
+        bytes: bytes,
+        filename: xFile.name,
+        contentType: xFile.mimeType ?? 'image/png',
+      );
+      widget.onChanged(url);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload failed: $e')),
+      );
+      // 실패 시 로컬 미리보기 제거
+      setState(() => _localBytes = null);
+    } finally {
+      setState(() => _isUploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = widget.imageUrl != null && widget.imageUrl!.isNotEmpty;
+    // 로컬 바이트가 있으면 우선 표시 (업로드 중이거나, 업로드 직후 URL이 깨져보일 때 대비)
+    final showLocal = _localBytes != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.white70,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (showLocal || hasImage)
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: showLocal
+                    ? Image.memory(
+                        _localBytes!,
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: widget.imageUrl!,
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          height: 160,
+                          color: Colors.white10,
+                          child:
+                              const Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          height: 160,
+                          color: Colors.white10,
+                          child: const Icon(Icons.broken_image,
+                              color: Colors.white54),
+                        ),
+                      ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _localBytes = null);
+                    widget.onChanged(null);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child:
+                        const Icon(Icons.close, size: 18, color: Colors.white),
+                  ),
+                ),
+              ),
+              if (_isUploading)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black45,
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ),
+            ],
+          )
+        else
+          InkWell(
+            onTap: _isUploading ? null : _pickAndUpload,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Center(
+                child: _isUploading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              color: Colors.white70),
+                          SizedBox(width: 8),
+                          Text('Upload Image',
+                              style: TextStyle(color: Colors.white70)),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MultiImagePickerInput extends StatefulWidget {
+  final String label;
+  final List<String>? imageUrls;
+  final ValueChanged<List<String>?> onChanged;
+  final int maxImages;
+
+  const _MultiImagePickerInput({
+    required this.label,
+    required this.imageUrls,
+    required this.onChanged,
+    this.maxImages = 4,
+  });
+
+  @override
+  State<_MultiImagePickerInput> createState() => _MultiImagePickerInputState();
+}
+
+class _MultiImagePickerInputState extends State<_MultiImagePickerInput> {
+  bool _isUploading = false;
+  // [추가] URL별 로컬 바이트 캐시
+  final Map<String, Uint8List> _localImageCache = {};
+
+  Future<void> _pickAndUpload() async {
+    final picker = ImagePicker();
+    try {
+      // Multi-image picker
+      final xFiles = await picker.pickMultiImage();
+      if (xFiles.isEmpty) return;
+
+      final currentCount = widget.imageUrls?.length ?? 0;
+      final remaining = widget.maxImages - currentCount;
+      final toUpload = xFiles.take(remaining).toList();
+
+      if (toUpload.isEmpty) return;
+
+      setState(() => _isUploading = true);
+
+      final newUrls = <String>[];
+      final uploader = const ReplicateFileUploader();
+
+      for (final file in toUpload) {
+        final bytes = await file.readAsBytes();
+        final url = await uploader.uploadBytes(
+          bytes: bytes,
+          filename: file.name,
+          contentType: file.mimeType ?? 'image/png',
+        );
+        // [추가] 업로드된 URL과 로컬 바이트 매핑 저장
+        _localImageCache[url] = bytes;
+        newUrls.add(url);
+      }
+
+      final updatedList = <String>[...(widget.imageUrls ?? []), ...newUrls];
+      widget.onChanged(updatedList);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload failed: $e')),
+      );
+    } finally {
+      setState(() => _isUploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final images = widget.imageUrls ?? [];
+    final canAdd = images.length < widget.maxImages;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              widget.label,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '${images.length}/${widget.maxImages}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.white38,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ...images.asMap().entries.map((entry) {
+              final index = entry.key;
+              final url = entry.value;
+              final localBytes = _localImageCache[url]; // 캐시 확인
+
+              return Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: localBytes != null
+                        ? Image.memory(
+                            localBytes,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: url,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(
+                              width: 80,
+                              height: 80,
+                              color: Colors.white10,
+                              child: const Center(
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2)),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
+                              width: 80,
+                              height: 80,
+                              color: Colors.white10,
+                              child: const Icon(Icons.broken_image,
+                                  size: 20, color: Colors.white54),
+                            ),
+                          ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () {
+                        final newList =
+                            List<String>.from(images)..removeAt(index);
+                        widget.onChanged(newList.isEmpty ? null : newList);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close,
+                            size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+            if (canAdd)
+              InkWell(
+                onTap: _isUploading ? null : _pickAndUpload,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: Center(
+                    child: _isUploading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.add, color: Colors.white70),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
